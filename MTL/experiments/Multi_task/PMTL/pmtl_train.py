@@ -8,7 +8,7 @@ import time
 from tqdm import tqdm
 from PMTL.data import Dataset
 from PMTL.min_norm_solvers import MinNormSolver
-def get_d_paretomtl_init(grads,value,weights,i):
+def get_d_paretomtl_init(grads,value,weights,i,device):
     """ 
     calculate the gradient direction for ParetoMTL initialization 
     """
@@ -29,7 +29,7 @@ def get_d_paretomtl_init(grads,value,weights,i):
         flag = True
         return flag, torch.zeros(nobj)
     if torch.sum(idx) == 1:
-        sol = torch.ones(1).cuda().float()
+        sol = torch.ones(1).to(device).float()
     else:
         vec =  torch.matmul(w[idx],grads)
         sol, nd = MinNormSolver.find_min_norm_element([[vec[t]] for t in range(len(vec))])
@@ -43,7 +43,7 @@ def get_d_paretomtl_init(grads,value,weights,i):
     return flag, weight
 
 
-def get_d_paretomtl(grads,value,weights,i):
+def get_d_paretomtl(grads,value,weights,i,device):
     """ calculate the gradient direction for ParetoMTL """
     
     # check active constraints
@@ -123,7 +123,7 @@ def train(model,optimizer, niter, preference,pref_idx,train_loader,n_tasks,devic
             
             # calculate the weights
             losses_vec = torch.stack(losses_vec)
-            flag, weight_vec = get_d_paretomtl_init(grads,losses_vec,ref_vec,pref_idx)
+            flag, weight_vec = get_d_paretomtl_init(grads,losses_vec,ref_vec,pref_idx,device)
             
             # early stop once a feasible solution is obtained
             if flag == True:
@@ -186,7 +186,7 @@ def train(model,optimizer, niter, preference,pref_idx,train_loader,n_tasks,devic
             
             # calculate the weights
             losses_vec = torch.stack(losses_vec)
-            weight_vec = get_d_paretomtl(grads,losses_vec,ref_vec,pref_idx)
+            weight_vec = get_d_paretomtl(grads,losses_vec,ref_vec,pref_idx,device)
             
             normalize_coeff = n_tasks / torch.sum(torch.abs(weight_vec))
             weight_vec = weight_vec * normalize_coeff
@@ -219,12 +219,12 @@ def run(dataset='mnist', base_model='lenet', niter=150,train_loader=None,prefere
     """
     run Pareto MTL
     """
-    
+    init_weight = np.array([0.5 , 0.5 ])
     for i, pref in enumerate(preferences):
         # DEFINE MODEL
         # ---------------------
         if base_model == 'lenet':
-            model = RegressionTrain(RegressionModel(2), pref)
+            model = RegressionTrain(RegressionModel(2), init_weight)
             model.to(device)
         # ---------***---------
         # DEFINE OPTIMIZERS
@@ -277,7 +277,3 @@ def PMTL_train(device,data_path,out_results,batch_size):
         run(dataset=dataset, base_model='lenet', niter=150,train_loader=train_loader,preferences=preferences,device = device,out_results=out_results)
         end = time.time()
         print("Runtime training: ",end-start)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# data_path = '/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/dataset/Multi_task'
-# out_results = '/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/experiments/Multi_task/PMTL/outputs'
-# PMTL_train(device,data_path,out_results)

@@ -140,7 +140,7 @@ def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_ta
     torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_3d_"+str(name)+".pt"))
     return sol,time_training
 
-def draw_2d(sol):
+def draw_2d(sol,pf):
     x = []
     y = []
     for s in sol:
@@ -156,7 +156,7 @@ def draw_2d(sol):
     #plt.savefig("/home/tuantran/Documents/OPT/Multi_Gradient_Descent/PHN/ex2_train_"+str(epochs)+"_ray.pdf")
     plt.show()
 
-def draw_3d(sol):
+def draw_3d(sol,pf):
     x = []
     y = []
     z = []
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     parser.add_argument("--outdim", type=int, default=3, help="output dim")
     parser.add_argument("--n_tasks", type=int, default=3, help="number of objective")
     parser.add_argument(
-        "--criterion", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy"], default="utility", help="solver"
+        "--solver", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy"], default="utility", help="solver"
     )
     parser.add_argument("--hiddendim", type=int, default=100, help="hidden_dim")
     parser.add_argument("--mode", type=str, default='3d', help="mode example")
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     out_dim = args.outdim
-    criterion = args.criterion # cosin complex, weighted distance, utility, linear, quadratic convex, epo
+    criterion = args.solver 
     hidden_dim = args.hiddendim
     lr = args.lr
     wd = args.wd
@@ -258,11 +258,11 @@ if __name__ == "__main__":
         lr = lr, wd = wd, epochs = epochs, alpha_r = alpha_r, outdim = out_dim,
         criterion = criterion,n_tasks = n_tasks,name = name)
         print("Time: ",time_training)  
-        draw_2d(sol)
+        draw_2d(sol,pf)
     else:
         pf  = create_pf_3d()
         sol, time_training = train_3d(device = device, hidden_dim = hidden_dim,
         lr = lr, wd = wd, epochs = epochs, alpha_r = alpha_r, outdim = out_dim,
         criterion = criterion,n_tasks = n_tasks,name = name)
         print("Time: ",time_training)
-        draw_3d(sol)
+        draw_3d(sol,pf)

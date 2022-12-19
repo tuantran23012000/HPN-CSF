@@ -88,7 +88,7 @@ def find_target(pf, criterion, context=None):
     elif criterion == 'KL':
         m = pf.shape[1]
         rl = np.exp(context*pf)
-        normalized_rl = rl/np.sum(rl,axis=1).reshape(1000,1)
+        normalized_rl = rl/np.sum(rl,axis=1).reshape(pf.shape[0],1)
         F = np.sum(normalized_rl * np.log(normalized_rl * m),axis=1) 
         return pf[F.argmin(),:]
     elif criterion == 'cauchy':

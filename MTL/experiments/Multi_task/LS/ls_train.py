@@ -54,12 +54,12 @@ def run(dataset='mnist', base_model='lenet', niter=150,train_loader=None,prefere
     """
     run Pareto MTL
     """
-    
+    init_weight = np.array([0.5 , 0.5 ])
     for i, pref in enumerate(preferences):
         # DEFINE MODEL
         # ---------------------
         if base_model == 'lenet':
-            model = RegressionTrain(RegressionModel(2), pref)
+            model = RegressionTrain(RegressionModel(2), init_weight)
             model.to(device)
         # ---------***---------
         # DEFINE OPTIMIZERS
@@ -112,7 +112,3 @@ def LS_train(device,data_path,out_results,batch_size):
         run(dataset=dataset, base_model='lenet', niter=150,train_loader=train_loader,preferences=preferences,device = device,out_results=out_results)
         end = time.time()
         print("Runtime training: ",end-start)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# data_path = '/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/dataset/Multi_task'
-# out_results = '/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/experiments/Multi_task/LS/outputs'
-# LS_train(device,data_path,out_results)
