@@ -7,15 +7,15 @@ import torch
 from torch import nn
 from tqdm import trange
 import os
-from HPN.metrics import hypervolumn
-from HPN.data import Dataset
-from HPN.models import (
+from metrics import hypervolumn
+from data import Dataset
+from models import (
     LeNetHyper,
     LeNetTarget,
     ResnetHyper,
     ResNetTarget,
 )
-from HPN.utils import (
+from utils import (
     circle_points,
     count_parameters,
     get_device,
@@ -23,7 +23,7 @@ from HPN.utils import (
     set_logger,
     set_seed,
 )
-from HPN.solver import EPOSolver, LinearScalarizationSolver, ChebyshevBasedSolver, UtilityBasedSolver
+from solver import EPOSolver, LinearScalarizationSolver, ChebyshevBasedSolver, UtilityBasedSolver
 
 @torch.no_grad()
 def evaluate_hv(hypernet, targetnet, loader, rays, device):
@@ -178,7 +178,7 @@ def train(
         if hv_loss>best_hv_loss:
             best_hv_loss = hv_loss
             print("Update best model")
-            torch.save(hnet,os.path.join(out_dir,"best_model_"+str(solver_type)+"_"+str(dataset)+".pt"))
+            torch.save(hnet,os.path.join(out_dir,"best_model_"+str(solver_type)+"_multi_"+str(dataset)+".pt"))
 
 def load_data(dataset,data_path):
     # LOAD DATASET
@@ -192,7 +192,7 @@ def load_data(dataset,data_path):
         path = os.path.join(data_path,'multi_fashion.pickle')
 
     # Multi-(Fashion+MNIST): multi_fashion_and_mnist.pickle
-    if dataset == 'fashion_and_mnist':
+    if dataset == 'fashion_mnist':
         path = os.path.join(data_path,'multi_fashion_and_mnist.pickle')
 
     data = Dataset(path, val_size=0.1)
@@ -212,47 +212,9 @@ def load_data(dataset,data_path):
         shuffle=False)
     return train_loader,val_loader, test_loader
 def HPN_train(device,data_path,out_results,solver,batch_size):
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--n-epochs", type=int, default=150, help="num. epochs")
-    # parser.add_argument(
-    #     "--ray-hidden", type=int, default=100, help="lower range for ray"
-    # )
-    # parser.add_argument("--alpha", type=float, default=0.2, help="alpha for dirichlet")
-    # parser.add_argument(
-    #     "--model",
-    #     type=str,
-    #     default="lenet",
-    #     choices=["lenet", "resnet"],
-    #     help="model name",
-    # )
-
-    # parser.add_argument("--gpus", type=str, default="0", help="gpu device")
-    # # parser.add_argument("--batch-size", type=int, default=256, help="batch size")
-    # parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
-    # parser.add_argument("--wd", type=float, default=0.0, help="weight decay")
-    # parser.add_argument("--val-size", type=float, default=0.1, help="validation size")
-    # parser.add_argument(
-    #     "--no-val-eval",
-    #     action="store_true",
-    #     default=False,
-    #     help="evaluate on validation",
-    # )
-    # # parser.add_argument(
-    # #     "--solver", type=str, choices=["ls", "epo","cheby","utility"], default="ls", help="solver"
-    # # )
-    # parser.add_argument(
-    #     "--eval-every",
-    #     type=int,
-    #     default=10,
-    #     help="number of epochs between evaluations",
-    # )
-    # parser.add_argument("--n-rays", type=int, default=25, help="num. rays")
-    # parser.add_argument("--seed", type=int, default=42, help="random seed")
-    # args = parser.parse_args()
-
     set_seed(42)
     set_logger()
-    datasets = ['mnist','fashion','fashion_and_mnist']
+    datasets = ['mnist','fashion','fashion_mnist']
     for dataset in datasets:
         print("Dataset: ",dataset)
         print("Solver: ",solver)
@@ -277,9 +239,30 @@ def HPN_train(device,data_path,out_results,solver,batch_size):
         )
         end = time.time()
         print("Runtime training: ",end-start)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# data_path = '/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/dataset/Multi_task'
-# out_results = '/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/experiments/Multi_task/HPN/outputs'
-# hpn_solver = 'ls'
-# HPN_train(device,data_path,out_results,hpn_solver)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="MultiTask")
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default="/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/dataset/Multi_task",
+        help="path to data",
+    )
+    parser.add_argument("--batch-size", type=int, default=256, help="batch size")
+    parser.add_argument(
+    "--out-dir",
+    type=str,
+    default="./save_weights",
+    help="path to output"
+)
+    parser.add_argument(
+        "--solver", type=str, choices=["ls", "epo","cheby","utility"], default="ls", help="HPN solver"
+    )
+    args = parser.parse_args()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data_path = args.data_path
+    out_results = args.out_dir
+    hpn_solver = args.solver
+    batch_size = args.batch_size
+    HPN_train(device,data_path,out_results,hpn_solver,batch_size)
 

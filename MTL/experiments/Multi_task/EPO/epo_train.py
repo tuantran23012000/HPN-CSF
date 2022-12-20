@@ -3,11 +3,12 @@ import os
 import torch
 import torch.utils.data
 from torch.autograd import Variable
-from EPO.model_lenet import RegressionModel, RegressionTrain
-from EPO.epo_lp import EPO_LP
+from model_lenet import RegressionModel, RegressionTrain
+from epo_lp import EPO_LP
 import time
 from tqdm import tqdm
-from EPO.data import Dataset
+from data import Dataset
+import argparse
 def getNumParams(params):
     numParams, numTrainable = 0, 0
     for param in params:
@@ -151,4 +152,26 @@ def EPO_train(device,data_path,out_results,batch_size):
         run(dataset=dataset, base_model='lenet', niter=150,train_loader=train_loader,preferences=preferences,device = device,out_results=out_results)
         end = time.time()
         print("Runtime training: ",end-start)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="MultiTask")
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default="/home/tuantran/Documents/OPT/Multi_Gradient_Descent/HPN-CSF/MTL/dataset/Multi_task",
+        help="path to data",
+    )
+    parser.add_argument("--batch-size", type=int, default=256, help="batch size")
+    parser.add_argument(
+    "--out-dir",
+    type=str,
+    default="./save_weights",
+    help="path to output")
+
+    args = parser.parse_args()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data_path = args.data_path
+    out_results = args.out_dir
+    batch_size = args.batch_size
+    EPO_train(device,data_path,out_results,batch_size)
 
