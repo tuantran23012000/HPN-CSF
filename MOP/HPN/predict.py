@@ -68,9 +68,7 @@ def circle_points(K, min_angle=None, max_angle=None):
 
 def find_target(pf, criterion, context=None):
     if criterion == 'cheby':
-        for i in range(pf.shape[0]):
-            F.append(max(context[0]*pf[i, 0],context[1]*pf[i, 1]))
-        F = np.array(F)
+        F = np.max(context*pf,axis = 1)
         return pf[F.argmin(), :]
     elif criterion == 'ls':
         F = context[0]*pf[:, 0] + context[1]*pf[:, 1]
