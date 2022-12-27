@@ -6,8 +6,8 @@ We evaluate MED error on 3 examples. We use a Linux server with Intel(R) Core(TM
 
 |    Method     |     Example 1       | Example 2 | Example 3	|
 |:-------------:|:-----------------------:|:-----------------------------------:|:----------------------------------:|
-PHN-LS  | $0.0033 \pm  0.0006$ | $\bf 0.0026\pm  \bf 0.0001$ | $ 0.0278\pm  0.0019$|
-PHN-Cheby | $ \underline{0.0032}\pm  \underline{0.0003}$  |  $0.0047\pm  0.0008$ | $ 0.0309\pm  0.0023$|
+PHN-LS  | $0.0033 \pm  0.0006$ | $\bf 0.0026\pm  \bf 0.0001$ | $0.0278\pm  0.0019$|
+PHN-Cheby | $\underline{0.0032}\pm  \underline{0.0003}$  |  $0.0047\pm  0.0008$ | $0.0309\pm  0.0023$|
 PHN-Utility ($ub = 2.01$) | $0.0052\pm  0.0004$  |  $0.0062\pm  0.0002$ |  $\bf 0.0138\pm \bf 0.0009$ |
 PHN-KL   | $0.0052\pm  0.0003$  | $0.0124\pm  0.0002$ | $0.0373\pm  0.0039$|
 PHN-Cauchy | $0.0037\pm  0.0003$ | $0.0232\pm  0.0007$ |  $0.0642\pm  0.0025$|
