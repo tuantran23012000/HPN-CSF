@@ -12,10 +12,12 @@ import torch
 from matplotlib import pyplot as plt
 from problems import f_1, f_2, f_3
 from create_pareto_front import create_pf5,create_pf6, create_pf_3d
-from scalarization_function import linear_function,cosine_function, utility_function, KL,cauchy_schwarz_function,chebyshev_function
+#from scalarization_function import linear_function,cosine_function, product_function,utility_function, KL_function,cauchy_schwarz_function,chebyshev_function,log_function,test_function
+from scalarization_function import SC_functions
 import argparse
 import matplotlib as mpl
 from matplotlib.animation import FuncAnimation
+from hv import HvMaximization
 color_list = ['#28B463', '#326CAE', '#FFC300','#FF5733', 'brown']
 font1 = {'family': 'Times New Roman',
          'weight': 'normal',
@@ -64,6 +66,8 @@ def train_2d(device, hidden_dim, lr, wd, epochs, alpha_r, outdim, criterion,n_ta
     sol = []
     optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
     start = time.time()
+    n_mo_sol, n_mo_obj, ref_point = 1,2,(2,2)
+    mo_opt = HvMaximization(n_mo_sol, n_mo_obj, ref_point)
     for epoch in tqdm(range(epochs)):
         ray = torch.from_numpy(
             np.random.dirichlet((alpha_r, alpha_r), 1).astype(np.float32).flatten()
@@ -76,18 +80,38 @@ def train_2d(device, hidden_dim, lr, wd, epochs, alpha_r, outdim, criterion,n_ta
         l1 = loss1(output)
         l2 = loss2(output)
         losses = torch.stack((l1, l2)) 
-        if criterion == 'ls':
-            loss = linear_function(losses,ray)
+        SC_func = SC_functions(losses,ray)
+        loss_numpy = []
+        for j in range(1):
+            loss_numpy.append(losses.detach().cpu().numpy())
+        loss_numpy = np.array(loss_numpy).T
+        loss_numpy = loss_numpy[np.newaxis, :, :]
+        if criterion == 'prod':
+            loss = SC_func.product_function()
+        elif criterion == 'log':
+            loss = SC_func.log_function()
+        elif criterion == 'ac':
+            loss = SC_func.ac_function(rho = 0.1)
+        elif criterion == 'mc':
+            loss = SC_func.mc_function(rho = 0.1)
+        elif criterion == 'hv':
+            #losses = np.array(loss_numpy)
+            dynamic_weight = mo_opt.compute_weights(loss_numpy[0,:,:])
+            #print(dynamic_weight)
+            loss = SC_func.hv_function(dynamic_weight.reshape(1,2),rho =10)
+        elif criterion == 'ls':
+            loss = SC_func.linear_function()
         elif criterion == 'cheby':
-            loss = chebyshev_function(losses,ray)
+            loss = SC_func.chebyshev_function()
         elif criterion == 'utility':
-            loss = utility_function(losses,ray)
+            loss = SC_func.utility_function(ub = 1.01)
         elif criterion == 'KL':
-            loss = KL(losses,ray)
+            loss = SC_func.KL_function()
         elif criterion == 'cosine':
-            loss = cosine_function(losses,ray)
+            loss = SC_func.cosine_function()
         elif criterion == 'cauchy':
-            loss = cauchy_schwarz_function(losses,ray_cs)
+            SC_func = SC_functions(losses,ray_cs)
+            loss = SC_func.cauchy_schwarz_function()
         loss.backward()
         optimizer.step()
         sol.append(output.cpu().detach().numpy().tolist()[0])
@@ -106,6 +130,8 @@ def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_ta
     sol = []
     optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
     start = time.time()
+    n_mo_sol, n_mo_obj, ref_point = 1,3,(2,2,2)
+    mo_opt = HvMaximization(n_mo_sol, n_mo_obj, ref_point)
     for epoch in tqdm(range(epochs)):
         ray = torch.from_numpy(
             np.random.dirichlet((alpha_r, alpha_r,alpha_r), 1).astype(np.float32).flatten()
@@ -119,21 +145,44 @@ def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_ta
         l1 = loss1(output)
         l2 = loss2(output)
         l3 = loss3(output)
-        losses = torch.stack((l1, l2,l3)) 
-        if criterion == 'ls':
-            loss = linear_function(losses,ray)
+        losses = torch.stack((l1, l2,l3))
+        SC_func = SC_functions(losses,ray)
+        loss_numpy = []
+        for j in range(1):
+            loss_numpy.append(losses.detach().cpu().numpy())
+        loss_numpy = np.array(loss_numpy).T
+        loss_numpy = loss_numpy[np.newaxis, :, :]
+
+        #print(loss_numpy)
+        if criterion == 'prod':
+            loss = SC_func.product_function()
+        elif criterion == 'log':
+            loss = SC_func.log_function()
+        elif criterion == 'ac':
+            loss = SC_func.ac_function(rho = 0.1)
+        elif criterion == 'mc':
+            loss = SC_func.mc_function(rho = 0.1)
+        elif criterion == 'hv':
+            #losses = np.array(loss_numpy)
+            dynamic_weight = mo_opt.compute_weights(loss_numpy[0,:,:])
+            #print(dynamic_weight)
+            loss = SC_func.hv_function(dynamic_weight.reshape(1,3),rho = 600)
+        elif criterion == 'ls':
+            loss = SC_func.linear_function()
         elif criterion == 'cheby':
-            loss = chebyshev_function(losses,ray)
+            loss = SC_func.chebyshev_function()
         elif criterion == 'utility':
-            loss = utility_function(losses,ray)
+            loss = SC_func.utility_function(ub = 1.01)
         elif criterion == 'KL':
-            loss = KL(losses,ray)
+            loss = SC_func.KL_function()
         elif criterion == 'cosine':
-            loss = cosine_function(losses,ray)
+            loss = SC_func.cosine_function()
         elif criterion == 'cauchy':
-            loss = cauchy_schwarz_function(losses,ray_cs)
+            SC_func = SC_functions(losses,ray_cs)
+            loss = SC_func.cauchy_schwarz_function()
         loss.backward()
         optimizer.step()
+        
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start
@@ -218,24 +267,24 @@ def draw_3d(sol,pf):
     def update_graph(i):
         graph._offsets3d = (x[:i+1],y[:i+1],z[:i+1])
         title.set_text('3D Test, iteration = {}'.format(i))
-    ani = FuncAnimation(fig, update_graph,len(x), interval=40)
+    #ani = FuncAnimation(fig, update_graph,len(x), interval=40)
     ax.view_init(5, 45)
     #plt.savefig("./train_results/"+str(name)+"_train_"+str(criterion)+".png")
     #plt.savefig("/home/tuantran/Documents/OPT/Multi_Gradient_Descent/PHN/ex3_train_"+str(epochs)+"_ray.pdf")
-    ani.save('./train_results/train.gif', writer='imagemagick', fps=30)
+    #ani.save('./train_results/train.gif', writer='imagemagick', fps=30)
     plt.show()
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=1000, help="num. epochs")
+    parser.add_argument("--epochs", type=int, default= 20000, help="num. epochs")
     parser.add_argument("--alpha", type=float, default=0.6, help="alpha for dirichlet")
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument("--wd", type=float, default=0.0, help="weight decay")
     parser.add_argument("--outdim", type=int, default=3, help="output dim")
     parser.add_argument("--n_tasks", type=int, default=3, help="number of objective")
     parser.add_argument(
-        "--solver", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy"], default="utility", help="solver"
+        "--solver", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy","prod","log","ac","mc","hv"], default="cheby", help="solver"
     )
     parser.add_argument("--hiddendim", type=int, default=100, help="hidden_dim")
     parser.add_argument("--mode", type=str, default='3d', help="mode example")
@@ -253,7 +302,7 @@ if __name__ == "__main__":
     name = args.name
 
     if args.mode == "2d":
-        pf = create_pf5() 
+        pf = create_pf6() 
         sol, time_training = train_2d(device = device, hidden_dim = hidden_dim,
         lr = lr, wd = wd, epochs = epochs, alpha_r = alpha_r, outdim = out_dim,
         criterion = criterion,n_tasks = n_tasks,name = name)

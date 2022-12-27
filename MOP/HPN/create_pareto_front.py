@@ -3,16 +3,14 @@ import torch
 from problems import f_1, f_2, f_3
 from autograd import grad
 def concave_fun_eval(x):
-    f1_dx = grad(f_1)
-    f2_dx = grad(f_2)
-    return np.stack([f_1(x).item(),f_2(x).item()]), np.stack([f1_dx(x), f2_dx(x)])
+    return np.stack([f_1(x).item(),f_2(x).item()])
 def create_pf5():
     # example 1
     ps = np.linspace(0,1,num = 1000)
     pf = []
     for x1 in ps:
         x = torch.Tensor([[x1]])
-        f,_ = concave_fun_eval(x)
+        f= concave_fun_eval(x)
         pf.append(f)   
     pf = np.array(pf)
     return pf
@@ -22,7 +20,7 @@ def create_pf6():
     pf = []
     for x1 in ps:
         x = torch.Tensor([[x1,x1]])
-        f,_ = concave_fun_eval(x)
+        f= concave_fun_eval(x)
         pf.append(f)   
     pf = np.array(pf)
     return pf
@@ -31,15 +29,12 @@ def concave_fun_eval_3d(x):
     """
     return the function values and gradient values
     """
-    f1_dx = grad(f_1)
-    f2_dx = grad(f_2)
-    f3_dx = grad(f_3)
-    return np.stack([f_1(x).item(), f_2(x).item(), f_3(x).item()]), np.stack([f1_dx(x), f2_dx(x), f3_dx(x)])
+    return np.stack([f_1(x).item(), f_2(x).item(), f_3(x).item()])
 
 def create_pf_3d():
     # example 3
-    u = np.linspace(0, 1, endpoint=True, num=10)
-    v = np.linspace(0, 1, endpoint=True, num=10)
+    u = np.linspace(0, 1, endpoint=True, num=60)
+    v = np.linspace(0, 1, endpoint=True, num=60)
     tmp = []
     for i in u:
         for j in v:
@@ -52,7 +47,7 @@ def create_pf_3d():
     ls = []
     for x in uv:
         x = torch.Tensor([x])
-        f,_ = concave_fun_eval_3d(x)
+        f= concave_fun_eval_3d(x)
         ls.append(f)
     ls = np.stack(ls)
     po, pf = [], []

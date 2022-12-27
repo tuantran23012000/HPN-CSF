@@ -55,6 +55,8 @@ class Toy_Hypernetwork_2d(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, out_dim),
             nn.ReLU(inplace=True),
       '''
@@ -103,7 +105,7 @@ class Toy_Hypernetwork_2d(nn.Module):
             nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
+            nn.Sigmoid()
       '''
       '''
             cosine example 7.1
@@ -112,11 +114,69 @@ class Toy_Hypernetwork_2d(nn.Module):
             nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
+            nn.Sigmoid()
       '''
       '''
             cauchy example 7.1
             nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Sigmoid()
+      '''
+      '''
+            log example 7.1
+            nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Sigmoid()
+      '''
+      '''
+            log example 7.2
+            nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.ReLU(inplace=True),
+      '''
+      '''
+            ac example 7.1
+            nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Sigmoid()
+      '''
+      '''
+            mc example 7.1
+            nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Sigmoid()
+      '''
+      '''
+            hv example 7.1
+            nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Sigmoid()
+      '''
+      '''
+            ac example 7.2
+            nn.Linear(2, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
@@ -128,8 +188,6 @@ class Toy_Hypernetwork_2d(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
-            # nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            # nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, out_dim),
             nn.ReLU(inplace=True),
         )
@@ -254,6 +312,46 @@ class Toy_Hypernetwork_3d(nn.Module):
             nn.Linear(ray_hidden_dim, out_dim),
             nn.Softmax(dim=0)
       '''
+      '''
+            log example 7.3
+            nn.Linear(3, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Softmax(dim=0)
+      '''
+      '''
+            ac example 7.3
+            nn.Linear(3, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Softmax(dim=0)
+      '''
+      '''
+            mc example 7.3
+            nn.Linear(3, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Softmax(dim=0)
+      '''
+      '''
+            hv example 7.3
+            nn.Linear(3, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            nn.ReLU(inplace=True),
+            nn.Linear(ray_hidden_dim, out_dim),
+            nn.Softmax(dim=0)
+      '''
       self.ray_mlp = nn.Sequential(
             nn.Linear(3, ray_hidden_dim),
             nn.ReLU(inplace=True),
@@ -269,7 +367,11 @@ class Toy_Hypernetwork_3d(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(ray_hidden_dim, ray_hidden_dim),
             nn.ReLU(inplace=True),
+
             nn.Linear(ray_hidden_dim, out_dim),
+            #nn.ReLU(inplace=True),
+            #nn.Linear(ray_hidden_dim, ray_hidden_dim),
+            #LearnedSiLU(ray_hidden_dim)
             nn.Softmax(dim=0)
         )
   def forward(self, ray):

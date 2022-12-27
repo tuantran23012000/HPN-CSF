@@ -1,4 +1,4 @@
-# Pareto Multi Task Learning with Completed Scalarization Functions
+# A Framework for Pareto Multi Task Learning with Completed Scalarization Functions
 ## Custom code
 Custom Objective functions: `problems.py`
 

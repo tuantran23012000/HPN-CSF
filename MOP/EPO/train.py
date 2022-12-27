@@ -58,12 +58,28 @@ def sample_vec(n,m):
     
     return rays
 
-def train_2d(n=2,max_iters = 100,step_size=0.1):
+def train_2d(n=2,max_iters = 100,step_size=0.1,pf=None,num=10):
 
     start = time.time()
     target = []
     predict = []
     rs = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
+    contexts = np.array(sample_vec(2,num))
+    tmp = []
+    for r in contexts:
+        flag = True
+        for i in r:
+            if i <=0.16:
+                flag = False
+                break
+        if flag:
+
+            tmp.append(r)
+    contexts = np.array(tmp)
+    rng = np.random.default_rng()
+#A_sampled = rng.choice(A, 2)
+    #rs = rng.choice(contexts,30)
+    print(rs.shape)
     fig, ax = plt.subplots() 
     for k, r in enumerate(rs):
         r_inv = 1. / r
@@ -86,7 +102,8 @@ def train_2d(n=2,max_iters = 100,step_size=0.1):
     print("Runtime training: ",time_training)
     target = np.array(target)
     predict = np.array(predict)
-    print("MED:",np.mean(np.sqrt(np.sum(np.square(target-predict),axis = 1))))
+    MED = np.mean(np.sqrt(np.sum(np.square(target-predict),axis = 1)))
+    print("MED:",MED)
     color_list = ['#28B463', '#326CAE', '#FFC300','#FF5733', 'brown']
     ax.scatter(target[:,0], target[:,1], s=60,c=color_list[0], marker='o', alpha=1,label='Target')
     ax.scatter(predict[:, 0], predict[:, 1],s=40,c=color_list[2],marker='D',label='Predict') #HPN-PNGD
@@ -97,8 +114,9 @@ def train_2d(n=2,max_iters = 100,step_size=0.1):
     ax.set_xlabel(r'$f_1$')
     ax.set_ylabel(r'$f_2$')
     ax.legend()
-    plt.savefig('/home/tuantran/EPOSearch/MOP/EPO/2d_ex1.jpg')
+    plt.savefig('ex1_EPO_2d.jpg')
     plt.show()
+    return MED
 
 def train_3d(n=3,max_iters = 100,step_size=0.1):
     sim = simplex(5)
@@ -209,8 +227,8 @@ if __name__ == "__main__":
         "--solver", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy"], default="utility", help="solver"
     )
     parser.add_argument("--hiddendim", type=int, default=100, help="hidden_dim")
-    parser.add_argument("--mode", type=str, default='3d', help="mode example")
-    parser.add_argument("--name", type=str, default='ex3', help="example name")
+    parser.add_argument("--mode", type=str, default='2d', help="mode example")
+    parser.add_argument("--name", type=str, default='ex1', help="example name")
     args = parser.parse_args()
     
     out_dim = args.outdim
@@ -225,7 +243,13 @@ if __name__ == "__main__":
 
     if args.mode == "2d":
         pf = create_pf5() 
-        train_2d(n=1,max_iters = 100,step_size=0.1)
+        # check = []
+        # for i in range(10):
+        #     MED = train_2d(n=1,max_iters = 500,step_size=0.1,pf=pf,num = 500)
+        #     check.append(MED)
+        # print("Mean: ",np.array(check).mean())
+        # print("Std: ",np.array(check).std())
+        MED = train_2d(n=1,max_iters = 500,step_size=0.1,pf=pf,num = 500)
     else:
         pf  = create_pf_3d()
         train_3d(n=3,max_iters = 200,step_size=0.1)
