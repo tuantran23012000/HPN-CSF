@@ -286,7 +286,7 @@ def main(cfg,criterion,device,cpf):
 if __name__ == "__main__":
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
+    parser.add_argument("--config", type=str, default='./configs/ex3.yaml', help="config file")
     parser.add_argument(
         "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV"], default="HV", help="solver"
     )

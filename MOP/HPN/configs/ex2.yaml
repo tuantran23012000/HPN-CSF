@@ -52,6 +52,7 @@ TRAIN:
       Rho: 100
 
 EVAL:
+  Flag: True
   Num_eval: 10      
 
 TEST:

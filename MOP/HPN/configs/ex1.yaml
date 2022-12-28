@@ -52,10 +52,11 @@ TRAIN:
       Last_activation: 'sigmoid'
       Rho: 100
 
-EVAL:
+EVAL: 
+  Flag: False
   Num_eval: 10
 
-TEST:
+TEST: 
   Num_ray_init: 1000
   Num_ray_test: 30
   Num_eval: 10

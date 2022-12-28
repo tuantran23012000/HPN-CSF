@@ -52,8 +52,9 @@ TRAIN:
       Rho: 100
 
 EVAL:
+  Flag: False
   Num_eval: 10
 
 TEST:
   Num_ray_init: 1000
-  Num_ray_test: 30
+  Num_ray_test: 10

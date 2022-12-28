@@ -106,8 +106,8 @@ def predict_3d(device,cfg,criterion,pf):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
-    #contexts = rng.choice(contexts,num_ray_test)
-    contexts = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
+    contexts = rng.choice(contexts,num_ray_test)
+    #contexts = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
     for r in contexts:
         r_inv = 1. / r
         ray = torch.Tensor(r.tolist()).to(device)
@@ -241,28 +241,33 @@ def main(cfg,criterion,device,cpf):
             pf = cpf.create_pf5() 
         else:
             pf = cpf.create_pf6() 
-        # MED, targets_epo, results1, contexts = predict_2d(device,cfg,criterion,pf)
-        # draw_2d(cfg,targets_epo, results1, contexts,pf,criterion)
-        check = []
-        for i in range(cfg['EVAL']['Num_eval']):
-            MED, _, _, _ = predict_2d(device,cfg,criterion,pf)
-            check.append(MED.tolist())
-        print("Mean: ",np.array(check).mean())
-        print("Std: ",np.array(check).std())
+
+        if cfg['EVAL']['Flag']:
+            check = []
+            for i in range(cfg['EVAL']['Num_eval']):
+                MED, _, _, _ = predict_2d(device,cfg,criterion,pf)
+                check.append(MED.tolist())
+            print("Mean: ",np.array(check).mean())
+            print("Std: ",np.array(check).std())
+        else:
+            MED, targets_epo, results1, contexts = predict_2d(device,cfg,criterion,pf)
+            draw_2d(cfg,targets_epo, results1, contexts,pf,criterion)
     else:
         pf  = cpf.create_pf_3d()
-        # MED, targets_epo, results1, contexts = predict_3d(device,cfg,criterion,pf)
-        # draw_3d(cfg,targets_epo, results1, contexts,pf,criterion)
-        for i in range(cfg['EVAL']['Num_eval']):
-            MED, _, _, _ = predict_3d(device,cfg,criterion,pf)
-            check.append(MED.tolist())
-        print("Mean: ",np.array(check).mean())
-        print("Std: ",np.array(check).std())
 
+        if cfg['EVAL']['Flag']:
+            for i in range(cfg['EVAL']['Num_eval']):
+                MED, _, _, _ = predict_3d(device,cfg,criterion,pf)
+                check.append(MED.tolist())
+            print("Mean: ",np.array(check).mean())
+            print("Std: ",np.array(check).std())
+        else:
+            MED, targets_epo, results1, contexts = predict_3d(device,cfg,criterion,pf)
+            draw_3d(cfg,targets_epo, results1, contexts,pf,criterion)
 if __name__ == "__main__":
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
+    parser.add_argument("--config", type=str, default='./configs/ex3.yaml', help="config file")
     parser.add_argument(
         "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV"], default="HV", help="solver"
     )
