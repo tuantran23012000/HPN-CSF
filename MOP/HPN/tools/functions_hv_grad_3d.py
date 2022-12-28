@@ -7,8 +7,8 @@ and evolutionary computation III. Springer, Heidelberg, 2014. 169-193.
 '''
 import numpy as np
 import copy
-from functions_hv_python3 import HyperVolume
-from functions_evaluation import determine_non_dom_mo_sol
+from tools.functions_hv_python3 import HyperVolume
+from tools.functions_evaluation import determine_non_dom_mo_sol
 
 def determine_mo_sol_in_exterior(mo_obj_val,ref_point):
     # select only mo-solutions that are in the exterior

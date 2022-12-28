@@ -3,7 +3,7 @@ NAME: 'ex1'
 MODE: '2d'
 
 TRAIN:
-  Epoch: 200
+  Epoch: 20000
   Alpha: 0.6
   OPTIMIZER:
     TYPE: 'adam'
@@ -23,6 +23,7 @@ TRAIN:
     Utility:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'
+      Ub: 1.01
     KL:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'
@@ -41,13 +42,20 @@ TRAIN:
     AC:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'
+      Rho: 0.1
     MC:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'
+      Rho: 0.1
     HV:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'
+      Rho: 100
+
+EVAL:
+  Num_eval: 10
 
 TEST:
   Num_ray_init: 1000
   Num_ray_test: 30
+  Num_eval: 10

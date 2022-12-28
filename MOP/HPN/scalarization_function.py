@@ -1,5 +1,5 @@
 import torch
-class SC_functions():
+class CS_functions():
     def __init__(self,losses,ray):
         super().__init__()
         self.losses = losses

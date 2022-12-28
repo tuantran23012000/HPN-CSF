@@ -2,20 +2,20 @@ import torch
 import os
 import sys
 sys.path.append(os.getcwd())
-import logging
 import numpy as np
 import random
 import torch
 from matplotlib import pyplot as plt
-from MOP.HPN.pro import f_1, f_2,f_3
-from create_pareto_front import create_pf5,create_pf6, create_pf_3d
 import itertools
 import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import argparse
-from hv import HvMaximization
+from tools.utils import find_target
 import matplotlib as mpl
+from create_pareto_front import PF
+import yaml
+from tools.utils import circle_points, sample_vec
 mpl.rcParams['xtick.labelsize'] = 15
 mpl.rcParams['ytick.labelsize'] = 15
 def simplex(n_vals):
@@ -32,132 +32,20 @@ font_legend = {'family': 'Times New Roman',
                'weight': 'normal',
                 'size': 18,
                }
-def set_logger():
-    logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO
-    )
 
-
-def set_seed(seed):
-    """for reproducibility
-    :param seed:
-    :return:
-    """
-    np.random.seed(seed)
-    random.seed(seed)
-
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-
-    torch.backends.cudnn.enabled = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-
-set_logger()
-device = torch.device("cpu")
-def circle_points(K, min_angle=None, max_angle=None):
-    # generate evenly distributed preference vector
-    ang0 = np.pi / 20. if min_angle is None else min_angle
-    ang1 = np.pi * 9 / 20. if max_angle is None else max_angle
-    angles = np.linspace(ang0, ang1, K, endpoint=True)
-    x = np.cos(angles)
-    y = np.sin(angles)
-    return np.c_[x, y]
-
-
-def find_target(pf, criterion, context=None):
-    if criterion == 'log':
-        F = np.sum(context*np.log(pf+1),axis = 1)
-        return pf[F.argmin(), :]
-    elif criterion == 'prod':
-        F = np.prod((pf+1)**context,axis = 1)
-        return pf[F.argmin(), :]
-    elif criterion == 'ac':
-        F1 = np.max(context*pf,axis = 1)
-        F2 = np.sum(context*pf,axis = 1)
-        rho = 0.0001 
-        F = F1 + rho*F2
-        return pf[F.argmin(), :]
-    elif criterion == 'mc':
-        rho = 0.0001 
-        F1 = np.sum(context*pf,axis = 1).reshape(pf.shape[0],1)
-        F = np.max(context*pf + rho*F1,axis = 1)
-        return pf[F.argmin(), :]
-    elif criterion == 'hv':
-        n_mo_sol, n_mo_obj, ref_point = 1,2,(2,2)
-        mo_opt = HvMaximization(n_mo_sol, n_mo_obj, ref_point)
-        loss_numpy = pf[:, :,np.newaxis]
-        n_samples = loss_numpy.shape[0]
-        dynamic_weight = []
-        for i_sample in range(0, n_samples):
-            dynamic_weight.append((mo_opt.compute_weights(loss_numpy[i_sample,:,:])).reshape(1,n_mo_obj).tolist()[0])
-        dynamic_weight = np.array(dynamic_weight)
-        rho = 100 
-        rl = np.sum(context*pf,axis = 1)
-        l_s = np.sqrt(np.sum(pf**2,axis = 1))
-        r_s = np.sqrt(np.sum(np.array(context)**2))
-        cosine = - (rl) / (l_s*r_s)
-        F = -np.sum((dynamic_weight*pf),axis =1) + rho*cosine
-        return pf[F.argmin(), :]
-    elif criterion == 'cheby':
-        F = np.max(context*pf,axis = 1)
-        return pf[F.argmin(), :]
-    elif criterion == 'ls':
-        F = np.sum(context*pf,axis = 1)
-        return pf[F.argmin(), :]
-    elif criterion == 'utility':
-        ub = 1.01
-        F = 1/np.prod(((ub-pf)**context),axis=1)
-        return pf[F.argmin(), :]
-    elif criterion == 'cosine':
-        rl = np.sum(context*pf,axis = 1)
-        l_s = np.sqrt(np.sum(pf**2,axis = 1))
-        r_s = np.sqrt(np.sum(np.array(context)**2))
-        F = - (rl) / (l_s*r_s)
-        return pf[F.argmin(), :]
-    elif criterion == 'KL':
-        m = pf.shape[1]
-        rl = np.exp(context*pf)
-        normalized_rl = rl/np.sum(rl,axis=1).reshape(pf.shape[0],1)
-        F = np.sum(normalized_rl * np.log(normalized_rl * m),axis=1) 
-        return pf[F.argmin(),:]
-    elif criterion == 'cauchy':
-        rl = np.sum(context*pf,axis = 1)
-        l_s = np.sum(pf**2,axis = 1)
-        r_s = np.sum(np.array(context)**2)
-        F = 1 - (rl)**2 / (l_s*r_s)
-        return pf[F.argmin(),:]
-
-def sample_vec(n,m):
-    vector = [0]*n
-    unit = np.linspace(0, 1, m)
-    rays = []
-    def sample(i, sum):
-        if i == n-1:
-            vector[i] = 1-sum
-            rays.append(vector.copy())
-            return vector
-        for value in unit:
-            if value > 1-sum:
-                break
-            else:
-                vector[i] = value
-                sample(i+1, sum+value)
-    sample(0,0)
-    return rays
-
-def predict_2d(criterion,num_ray,mode,name,pf,num):
-    hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt")
+def predict_2d(device,cfg,criterion,pf):
+    mode = cfg['MODE']
+    name = cfg['NAME']
+    num_ray_init = cfg['TEST']['Num_ray_init']
+    num_ray_test = cfg['TEST']['Num_ray_test']
+    hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt",map_location=device)
     hnet1.eval()
     loss1 = f_1
     loss2 = f_2
     results1 = []
     targets_epo = []
-    #contexts = circle_points(num_ray)
-    contexts = np.array(sample_vec(2,num_ray))
+    #contexts = circle_points(num_ray_test)
+    contexts = np.array(sample_vec(2,num_ray_init))
     tmp = []
     for r in contexts:
         flag = True
@@ -170,8 +58,8 @@ def predict_2d(criterion,num_ray,mode,name,pf,num):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
-    #contexts = rng.choice(contexts,num)
-    contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
+    contexts = rng.choice(contexts,num_ray_test)
+    #contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
     for k,r in enumerate(contexts):
         r_inv = 1. / r
         ray = torch.Tensor(r.tolist()).to(device)
@@ -180,9 +68,9 @@ def predict_2d(criterion,num_ray,mode,name,pf,num):
         l2_ = loss2(output1)
         results1.append([l1_, l2_])
         if criterion == "cauchy":
-            target_epo = find_target(pf, criterion = criterion, context = r_inv.tolist())
+            target_epo = find_target(pf, criterion = criterion, context = r_inv.tolist(),cfg=cfg)
         else:
-            target_epo = find_target(pf, criterion = criterion, context = r.tolist())
+            target_epo = find_target(pf, criterion = criterion, context = r.tolist(),cfg = cfg)
         targets_epo.append(target_epo)
 
     targets_epo = np.array(targets_epo)
@@ -193,16 +81,19 @@ def predict_2d(criterion,num_ray,mode,name,pf,num):
     print("MED:",MED)
 
     return MED, targets_epo, results1, contexts
-def predict_3d(criterion,num_ray,mode,name,pf,num):
-    
-    hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt",map_location=torch.device('cpu'))
+def predict_3d(device,cfg,criterion,pf):
+    mode = cfg['MODE']
+    name = cfg['NAME']
+    num_ray_init = cfg['TEST']['Num_ray_init']
+    num_ray_test = cfg['TEST']['Num_ray_test']
+    hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt",map_location=device)
     hnet1.eval()
     loss1 = f_1
     loss2 = f_2
     loss3 = f_3
     results1 = []
     targets_epo = []
-    contexts = np.array(sample_vec(3,num_ray))
+    contexts = np.array(sample_vec(3,num_ray_init))
     tmp = []
     for r in contexts:
         flag = True
@@ -215,7 +106,7 @@ def predict_3d(criterion,num_ray,mode,name,pf,num):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
-    #contexts = rng.choice(contexts,num)
+    #contexts = rng.choice(contexts,num_ray_test)
     contexts = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
     for r in contexts:
         r_inv = 1. / r
@@ -227,9 +118,9 @@ def predict_3d(criterion,num_ray,mode,name,pf,num):
         l3_ = loss3(output1)
         results1.append([l1_, l2_,l3_])
         if criterion == "cauchy":
-            target_epo = find_target(pf, criterion = criterion, context = r_inv.tolist())
+            target_epo = find_target(pf, criterion = criterion, context = r_inv.tolist(),cfg=cfg)
         else:
-            target_epo = find_target(pf, criterion = criterion, context = r.tolist())
+            target_epo = find_target(pf, criterion = criterion, context = r.tolist(),cfg=cfg)
         targets_epo.append(target_epo)
 
     targets_epo = np.array(targets_epo)
@@ -240,7 +131,9 @@ def predict_3d(criterion,num_ray,mode,name,pf,num):
 
     return MED, targets_epo, results1, contexts
 
-def draw_2d(targets_epo, results1, contexts,pf,criterion):
+def draw_2d(cfg,targets_epo, results1, contexts,pf,criterion):
+    mode = cfg['MODE']
+    name = cfg['NAME']
     fig, ax = plt.subplots()
     for k,r in enumerate(contexts):
         r  = r/ r.sum()
@@ -267,7 +160,9 @@ def draw_2d(targets_epo, results1, contexts,pf,criterion):
     plt.savefig("./infer_results/"+str(name)+"_"+str(criterion)+"_"+str(mode)+".pdf")
     plt.show()
 
-def draw_3d(targets_epo, results1, contexts,pf,criterion):
+def draw_3d(cfg,targets_epo, results1, contexts,pf,criterion):
+    mode = cfg['MODE']
+    name = cfg['NAME']
     sim = simplex(5)
     x = sim[:, 0]
     y = sim[:, 1]
@@ -338,37 +233,54 @@ def draw_3d(targets_epo, results1, contexts,pf,criterion):
     plt.tight_layout()
     plt.savefig("./infer_results/"+str(name)+"_"+str(criterion)+"_"+str(mode)+".pdf")
     plt.show()
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--criterion", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy","prod","log",'ac','mc',"hv"], default="utility", help="solver"
-    )
-    parser.add_argument("--num_ray", type=int, default=10, help="hidden_dim")
-    parser.add_argument("--mode", type=str, default='2d', help="mode example")
-    parser.add_argument("--name", type=str, default='ex2', help="example name")
-    args = parser.parse_args()
-    criterion = args.criterion
-    num_ray = args.num_ray
-    mode = args.mode
-    name = args.name
-    num = 30
-    if mode == "2d":
-        pf = create_pf6()
-        # check = []
-        # for i in range(10):
-        #     MED, targets_epo, results1, contexts = predict_2d(criterion,num_ray,mode,name,pf,num)
-        #     check.append(MED.tolist())
-        # print("Mean: ",np.array(check).mean())
-        # print("Std: ",np.array(check).std())
-        MED, targets_epo, results1, contexts = predict_2d(criterion,num_ray,mode,name,pf,num)
-        draw_2d(targets_epo, results1, contexts,pf,criterion)
+
+def main(cfg,criterion,device,cpf):
+    if cfg['MODE'] == '2d':
+        if cfg['NAME'] == 'ex1':
+            
+            pf = cpf.create_pf5() 
+        else:
+            pf = cpf.create_pf6() 
+        # MED, targets_epo, results1, contexts = predict_2d(device,cfg,criterion,pf)
+        # draw_2d(cfg,targets_epo, results1, contexts,pf,criterion)
+        check = []
+        for i in range(cfg['EVAL']['Num_eval']):
+            MED, _, _, _ = predict_2d(device,cfg,criterion,pf)
+            check.append(MED.tolist())
+        print("Mean: ",np.array(check).mean())
+        print("Std: ",np.array(check).std())
     else:
-        pf = create_pf_3d()
-        # check = []
-        # for i in range(10):
-        #     MED , targets_epo, results1, contexts= predict_3d(criterion,num_ray,mode,name,pf,num)
-        #     check.append(MED.tolist())
-        # print("Mean: ",np.array(check).mean())
-        # print("Std: ",np.array(check).std())
-        MED, targets_epo, results1, contexts = predict_3d(criterion,num_ray,mode,name,pf,num)
-        draw_3d(targets_epo, results1, contexts,pf,criterion)
+        pf  = cpf.create_pf_3d()
+        # MED, targets_epo, results1, contexts = predict_3d(device,cfg,criterion,pf)
+        # draw_3d(cfg,targets_epo, results1, contexts,pf,criterion)
+        for i in range(cfg['EVAL']['Num_eval']):
+            MED, _, _, _ = predict_3d(device,cfg,criterion,pf)
+            check.append(MED.tolist())
+        print("Mean: ",np.array(check).mean())
+        print("Std: ",np.array(check).std())
+
+if __name__ == "__main__":
+    device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
+    parser.add_argument(
+        "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV"], default="HV", help="solver"
+    )
+    args = parser.parse_args()
+    criterion = args.solver
+    criterion = args.solver 
+    config_file = args.config
+
+    with open(config_file) as stream:
+        cfg = yaml.safe_load(stream)
+    
+    if cfg['NAME'] == 'ex1':
+        from problems.pb1 import f_1, f_2
+        cpf = PF(f_1, f_2,None)
+    elif cfg['NAME'] == 'ex2':
+        from problems.pb2 import f_1, f_2
+        cpf = PF(f_1, f_2,None)
+    if cfg['NAME'] == 'ex3':
+        from problems.pb3 import f_1, f_2, f_3
+        cpf = PF(f_1, f_2, f_3)
+    main(cfg,criterion,device,cpf)

@@ -1,20 +1,18 @@
 import sys
 import os
 sys.path.append(os.getcwd())
-import logging
 import time
-import random
 from tqdm import tqdm
 from models import Hypernetwork_2d, Hypernetwork_3d
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from create_pareto_front import PF
-from scalarization_function import SC_functions
+from scalarization_function import CS_functions
 import argparse
 import matplotlib as mpl
 from matplotlib.animation import FuncAnimation
-from hv import HvMaximization
+from tools.hv import HvMaximization
 import yaml
 color_list = ['#28B463', '#326CAE', '#FFC300','#FF5733', 'brown']
 font1 = {'family': 'Times New Roman',
@@ -25,31 +23,9 @@ font_legend = {'family': 'Times New Roman',
                'weight': 'normal',
                 'size': 18,
                }
-def set_logger():
-    logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO
-    )
-
-
-def set_seed(seed):
-    """for reproducibility
-    :param seed:
-    :return:
-    """
-    np.random.seed(seed)
-    random.seed(seed)
-
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-
-    torch.backends.cudnn.enabled = True
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-set_logger() 
 def train_2d(device, cfg,criterion):
+    name = cfg['NAME']
+    mode = cfg['MODE']
     ray_hidden_dim = cfg['TRAIN']['Ray_hidden_dim']
     out_dim = cfg['TRAIN']['Out_dim']
     n_tasks = cfg['TRAIN']['N_task']
@@ -83,45 +59,51 @@ def train_2d(device, cfg,criterion):
         l1 = loss1(output)
         l2 = loss2(output)
         losses = torch.stack((l1, l2)) 
-        SC_func = SC_functions(losses,ray)
+        CS_func = CS_functions(losses,ray)
         loss_numpy = []
         for j in range(1):
             loss_numpy.append(losses.detach().cpu().numpy())
         loss_numpy = np.array(loss_numpy).T
         loss_numpy = loss_numpy[np.newaxis, :, :]
         if criterion == 'Prod':
-            loss = SC_func.product_function()
+            loss = CS_func.product_function()
         elif criterion == 'Log':
-            loss = SC_func.log_function()
+            loss = CS_func.log_function()
         elif criterion == 'AC':
-            loss = SC_func.ac_function(rho = 0.1)
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho']
+            loss = CS_func.ac_function(rho = rho)
         elif criterion == 'MC':
-            loss = SC_func.mc_function(rho = 0.1)
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho']
+            loss = CS_func.mc_function(rho = rho)
         elif criterion == 'HV':
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho']
             dynamic_weight = mo_opt.compute_weights(loss_numpy[0,:,:])
-            loss = SC_func.hv_function(dynamic_weight.reshape(1,2),rho =10)
+            loss = CS_func.hv_function(dynamic_weight.reshape(1,2),rho =rho)
         elif criterion == 'LS':
-            loss = SC_func.linear_function()
+            loss = CS_func.linear_function()
         elif criterion == 'Cheby':
-            loss = SC_func.chebyshev_function()
+            loss = CS_func.chebyshev_function()
         elif criterion == 'Utility':
-            loss = SC_func.utility_function(ub = 1.01)
+            ub = cfg['TRAIN']['Solver'][criterion]['Ub']
+            loss = CS_func.utility_function(ub = ub)
         elif criterion == 'KL':
-            loss = SC_func.KL_function()
+            loss = CS_func.KL_function()
         elif criterion == 'Cosine':
-            loss = SC_func.cosine_function()
+            loss = CS_func.cosine_function()
         elif criterion == 'Cauchy':
-            SC_func = SC_functions(losses,ray_cs)
-            loss = SC_func.cauchy_schwarz_function()
+            CS_func = CS_functions(losses,ray_cs)
+            loss = CS_func.cauchy_schwarz_function()
         loss.backward()
         optimizer.step()
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start
-    #torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_2d_"+str(name)+".pt"))
+    torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt"))
     return sol,time_training
 
 def train_3d(device, cfg, criterion):
+    name = cfg['NAME']
+    mode = cfg['MODE']
     ray_hidden_dim = cfg['TRAIN']['Ray_hidden_dim']
     out_dim = cfg['TRAIN']['Out_dim']
     n_tasks = cfg['TRAIN']['N_task']
@@ -157,43 +139,47 @@ def train_3d(device, cfg, criterion):
         l2 = loss2(output)
         l3 = loss3(output)
         losses = torch.stack((l1, l2,l3))
-        SC_func = SC_functions(losses,ray)
+        CS_func = CS_functions(losses,ray)
         loss_numpy = []
         for j in range(1):
             loss_numpy.append(losses.detach().cpu().numpy())
         loss_numpy = np.array(loss_numpy).T
         loss_numpy = loss_numpy[np.newaxis, :, :]
         if criterion == 'Prod':
-            loss = SC_func.product_function()
+            loss = CS_func.product_function()
         elif criterion == 'Log':
-            loss = SC_func.log_function()
+            loss = CS_func.log_function()
         elif criterion == 'AC':
-            loss = SC_func.ac_function(rho = 0.1)
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho']
+            loss = CS_func.ac_function(rho = rho)
         elif criterion == 'MC':
-            loss = SC_func.mc_function(rho = 0.1)
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho']
+            loss = CS_func.mc_function(rho = rho)
         elif criterion == 'HV':
+            rho = cfg['TRAIN']['Solver'][criterion]['Rho']
             dynamic_weight = mo_opt.compute_weights(loss_numpy[0,:,:])
-            loss = SC_func.hv_function(dynamic_weight.reshape(1,3),rho = 600)
+            loss = CS_func.hv_function(dynamic_weight.reshape(1,3),rho = rho)
         elif criterion == 'LS':
-            loss = SC_func.linear_function()
+            loss = CS_func.linear_function()
         elif criterion == 'Cheby':
-            loss = SC_func.chebyshev_function()
+            loss = CS_func.chebyshev_function()
         elif criterion == 'Utility':
-            loss = SC_func.utility_function(ub = 1.01)
+            ub = cfg['TRAIN']['Solver'][criterion]['Ub']
+            loss = CS_func.utility_function(ub = ub)
         elif criterion == 'KL':
-            loss = SC_func.KL_function()
+            loss = CS_func.KL_function()
         elif criterion == 'Cosine':
-            loss = SC_func.cosine_function()
+            loss = CS_func.cosine_function()
         elif criterion == 'Cauchy':
-            SC_func = SC_functions(losses,ray_cs)
-            loss = SC_func.cauchy_schwarz_function()
+            CS_func = CS_functions(losses,ray_cs)
+            loss = CS_func.cauchy_schwarz_function()
         loss.backward()
         optimizer.step()
         
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start
-    #torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_3d_"+str(name)+".pt"))
+    torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt"))
     return sol,time_training
 
 def draw_2d(sol,pf,cfg,criterion):

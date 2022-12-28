@@ -1,8 +1,7 @@
 import numpy as np
 import torch
-
-from functions_evaluation import fastNonDominatedSort
-from functions_hv_grad_3d import grad_multi_sweep_with_duplicate_handling
+from tools.functions_evaluation import fastNonDominatedSort
+from tools.functions_hv_grad_3d import grad_multi_sweep_with_duplicate_handling
 
 
 class HvMaximization(object):

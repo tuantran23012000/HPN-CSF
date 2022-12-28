@@ -8,7 +8,7 @@ IEEE transactions on evolutionary computation 6.2 (2002): 182-197.
 import numpy as np
 import pdb
 
-from functions_hv_python3 import HyperVolume
+from tools.functions_hv_python3 import HyperVolume
 
 def determine_non_dom_mo_sol(mo_obj_val):
     # get set of non-dominated solutions, returns indices of non-dominated and booleans of dominated mo_sol
