@@ -23,13 +23,10 @@ class SC_functions():
     
     def hv_function(self,dynamic_weight,rho):
         rl = self.losses * self.ray
-        # l_s = torch.sqrt((self.losses**2).sum())
-        # r_s = torch.sqrt((self.ray**2).sum())
         l_s = torch.norm(self.losses)
         r_s = torch.norm(self.ray)
         cosine = - (rl.sum()) / (l_s*r_s) 
         hv = -(dynamic_weight*self.losses).sum()  + rho * cosine
-        #print((dynamic_weight*self.losses).sum())
         return hv
 
     def product_function(self):

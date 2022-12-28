@@ -1,0 +1,53 @@
+NAME: 'ex3'
+
+MODE: '3d'
+
+TRAIN:
+  Epoch: 2000
+  Alpha: 0.6
+  OPTIMIZER:
+    TYPE: 'adam'
+    Lr: 0.001
+    WEIGHT_DECAY: 0
+  Out_dim: 3
+  Ray_hidden_dim: 100
+  N_task: 3
+  Ref_point: "2,2,2"
+  Solver:
+    Cheby:
+      Num_hidden_layer: 2
+      Last_activation: 'softmax'
+    LS:
+      Num_hidden_layer: 4
+      Last_activation: 'softmax'
+    Utility:
+      Num_hidden_layer: 6
+      Last_activation: 'softmax'
+    KL:
+      Num_hidden_layer: 5
+      Last_activation: 'softmax'
+    Cosine:
+      Num_hidden_layer: 5
+      Last_activation: 'softmax'
+    Cauchy:
+      Num_hidden_layer: 6
+      Last_activation: 'softmax'
+    Log:
+      Num_hidden_layer: 1
+      Last_activation: 'softmax'
+    Prod:
+      Num_hidden_layer: 1
+      Last_activation: 'softmax'
+    AC:
+      Num_hidden_layer: 1
+      Last_activation: 'softmax'
+    MC:
+      Num_hidden_layer: 1
+      Last_activation: 'softmax'
+    HV:
+      Num_hidden_layer: 3
+      Last_activation: 'softmax'
+
+TEST:
+  Num_ray_init: 1000
+  Num_ray_test: 30

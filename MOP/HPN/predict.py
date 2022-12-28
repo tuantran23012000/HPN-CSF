@@ -7,7 +7,7 @@ import numpy as np
 import random
 import torch
 from matplotlib import pyplot as plt
-from problems import f_1, f_2,f_3
+from MOP.HPN.pro import f_1, f_2,f_3
 from create_pareto_front import create_pf5,create_pf6, create_pf_3d
 import itertools
 import matplotlib.pyplot as plt
@@ -57,8 +57,6 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 set_logger()
-
-#device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
 device = torch.device("cpu")
 def circle_points(K, min_angle=None, max_angle=None):
     # generate evenly distributed preference vector
@@ -86,29 +84,22 @@ def find_target(pf, criterion, context=None):
     elif criterion == 'mc':
         rho = 0.0001 
         F1 = np.sum(context*pf,axis = 1).reshape(pf.shape[0],1)
-        #print((context*pf + rho*F1).shape)
         F = np.max(context*pf + rho*F1,axis = 1)
         return pf[F.argmin(), :]
     elif criterion == 'hv':
         n_mo_sol, n_mo_obj, ref_point = 1,2,(2,2)
         mo_opt = HvMaximization(n_mo_sol, n_mo_obj, ref_point)
-        
-        #loss_numpy = pf.T
         loss_numpy = pf[:, :,np.newaxis]
-        #print(loss_numpy.shape)
         n_samples = loss_numpy.shape[0]
         dynamic_weight = []
         for i_sample in range(0, n_samples):
-            #print((mo_opt.compute_weights(loss_numpy[i_sample,:,:])).reshape(1,3).tolist()[0])
             dynamic_weight.append((mo_opt.compute_weights(loss_numpy[i_sample,:,:])).reshape(1,n_mo_obj).tolist()[0])
         dynamic_weight = np.array(dynamic_weight)
-        #print(dynamic_weight.shape)
         rho = 100 
         rl = np.sum(context*pf,axis = 1)
         l_s = np.sqrt(np.sum(pf**2,axis = 1))
         r_s = np.sqrt(np.sum(np.array(context)**2))
         cosine = - (rl) / (l_s*r_s)
-        #dynamic_weight = 1
         F = -np.sum((dynamic_weight*pf),axis =1) + rho*cosine
         return pf[F.argmin(), :]
     elif criterion == 'cheby':
@@ -159,16 +150,11 @@ def sample_vec(n,m):
     return rays
 
 def predict_2d(criterion,num_ray,mode,name,pf,num):
-     # pareto for OF01
     hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt")
-    # for name, param in hnet1.named_parameters():
-    #     if param.requires_grad:
-    #         print(param.data)
     hnet1.eval()
     loss1 = f_1
     loss2 = f_2
     results1 = []
-     
     targets_epo = []
     #contexts = circle_points(num_ray)
     contexts = np.array(sample_vec(2,num_ray))
@@ -184,8 +170,7 @@ def predict_2d(criterion,num_ray,mode,name,pf,num):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
-    contexts = rng.choice(contexts,num)
-    print(contexts.shape)
+    #contexts = rng.choice(contexts,num)
     contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
     for k,r in enumerate(contexts):
         r_inv = 1. / r
@@ -231,8 +216,7 @@ def predict_3d(criterion,num_ray,mode,name,pf,num):
     contexts = np.array(tmp)
     rng = np.random.default_rng()
     #contexts = rng.choice(contexts,num)
-    print(contexts.shape)
-    #contexts = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
+    contexts = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
     for r in contexts:
         r_inv = 1. / r
         ray = torch.Tensor(r.tolist()).to(device)
@@ -270,10 +254,8 @@ def draw_2d(targets_epo, results1, contexts,pf,criterion):
             ax.arrow(.95 * ep_ray[0], .95 * ep_ray[1],
                         .05 * ep_ray[0], .05 * ep_ray[1],
                         color='k', lw=1, head_width=.02)
-    # ax.xaxis.set_label_coords(1.015, -0.03)
-    # ax.yaxis.set_label_coords(-0.01, 1.01)
-    ax.scatter(targets_epo[:,0], targets_epo[:,1], s=20,c='red', marker='D', alpha=1,label='Target')
-    ax.scatter(results1[:, 0], results1[:, 1],s=10,c='black',marker='o',label='Predict') #HPN-PNGD
+    ax.scatter(targets_epo[:,0], targets_epo[:,1], s=40,c='red', marker='D', alpha=1,label='Target')
+    ax.scatter(results1[:, 0], results1[:, 1],s=40,c='black',marker='o',label='Predict') #HPN-PNGD
     ax.scatter(pf[:,0],pf[:,1],s=10,c='gray',label='Pareto Front',zorder=0)
     ax.spines['right'].set_color('none')
     ax.spines['top'].set_color('none')
@@ -359,11 +341,11 @@ def draw_3d(targets_epo, results1, contexts,pf,criterion):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--criterion", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy","prod","log",'ac','mc',"hv"], default="ls", help="solver"
+        "--criterion", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy","prod","log",'ac','mc',"hv"], default="utility", help="solver"
     )
     parser.add_argument("--num_ray", type=int, default=10, help="hidden_dim")
     parser.add_argument("--mode", type=str, default='2d', help="mode example")
-    parser.add_argument("--name", type=str, default='ex1', help="example name")
+    parser.add_argument("--name", type=str, default='ex2', help="example name")
     args = parser.parse_args()
     criterion = args.criterion
     num_ray = args.num_ray
@@ -371,7 +353,7 @@ if __name__ == "__main__":
     name = args.name
     num = 30
     if mode == "2d":
-        pf = create_pf5()
+        pf = create_pf6()
         # check = []
         # for i in range(10):
         #     MED, targets_epo, results1, contexts = predict_2d(criterion,num_ray,mode,name,pf,num)

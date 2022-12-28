@@ -1,23 +1,21 @@
 import sys
 import os
 sys.path.append(os.getcwd())
-from torch import nn
 import logging
 import time
 import random
 from tqdm import tqdm
-from models import Toy_Hypernetwork_2d, Toy_Hypernetwork_3d
+from models import Hypernetwork_2d, Hypernetwork_3d
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
-from problems import f_1, f_2, f_3
-from create_pareto_front import create_pf5,create_pf6, create_pf_3d
-#from scalarization_function import linear_function,cosine_function, product_function,utility_function, KL_function,cauchy_schwarz_function,chebyshev_function,log_function,test_function
+from create_pareto_front import PF
 from scalarization_function import SC_functions
 import argparse
 import matplotlib as mpl
 from matplotlib.animation import FuncAnimation
 from hv import HvMaximization
+import yaml
 color_list = ['#28B463', '#326CAE', '#FFC300','#FF5733', 'brown']
 font1 = {'family': 'Times New Roman',
          'weight': 'normal',
@@ -50,24 +48,29 @@ def set_seed(seed):
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-
-set_logger()
-
-device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-def train_2d(device, hidden_dim, lr, wd, epochs, alpha_r, outdim, criterion,n_tasks,name):
-    hnet: nn.Module = Toy_Hypernetwork_2d(ray_hidden_dim = hidden_dim, out_dim = outdim, n_tasks = n_tasks)
-    logging.info(f"HN size: {count_parameters(hnet)}")
+set_logger() 
+def train_2d(device, cfg,criterion):
+    ray_hidden_dim = cfg['TRAIN']['Ray_hidden_dim']
+    out_dim = cfg['TRAIN']['Out_dim']
+    n_tasks = cfg['TRAIN']['N_task']
+    num_hidden_layer = cfg['TRAIN']['Solver'][criterion]['Num_hidden_layer']
+    last_activation = cfg['TRAIN']['Solver'][criterion]['Last_activation']
+    ref_point = tuple(map(int, cfg['TRAIN']['Ref_point'].split(',')))
+    lr = cfg['TRAIN']['OPTIMIZER']['Lr']
+    wd = cfg['TRAIN']['OPTIMIZER']['WEIGHT_DECAY']
+    type_opt = cfg['TRAIN']['OPTIMIZER']['TYPE']
+    epochs = cfg['TRAIN']['Epoch']
+    alpha_r = cfg['TRAIN']['Alpha']
+    hnet = Hypernetwork_2d(ray_hidden_dim = ray_hidden_dim, out_dim = out_dim, n_tasks = n_tasks,num_hidden_layer=num_hidden_layer,last_activation=last_activation)
     hnet = hnet.to(device)
     loss1 = f_1
     loss2 = f_2
     sol = []
-    optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
+    if type_opt == 'adam':
+        optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
     start = time.time()
-    n_mo_sol, n_mo_obj, ref_point = 1,2,(2,2)
-    mo_opt = HvMaximization(n_mo_sol, n_mo_obj, ref_point)
+    #n_mo_sol, n_mo_obj, ref_point = 1,n_tasks,ref_point
+    mo_opt = HvMaximization(1, n_tasks, ref_point)
     for epoch in tqdm(range(epochs)):
         ray = torch.from_numpy(
             np.random.dirichlet((alpha_r, alpha_r), 1).astype(np.float32).flatten()
@@ -86,30 +89,28 @@ def train_2d(device, hidden_dim, lr, wd, epochs, alpha_r, outdim, criterion,n_ta
             loss_numpy.append(losses.detach().cpu().numpy())
         loss_numpy = np.array(loss_numpy).T
         loss_numpy = loss_numpy[np.newaxis, :, :]
-        if criterion == 'prod':
+        if criterion == 'Prod':
             loss = SC_func.product_function()
-        elif criterion == 'log':
+        elif criterion == 'Log':
             loss = SC_func.log_function()
-        elif criterion == 'ac':
+        elif criterion == 'AC':
             loss = SC_func.ac_function(rho = 0.1)
-        elif criterion == 'mc':
+        elif criterion == 'MC':
             loss = SC_func.mc_function(rho = 0.1)
-        elif criterion == 'hv':
-            #losses = np.array(loss_numpy)
+        elif criterion == 'HV':
             dynamic_weight = mo_opt.compute_weights(loss_numpy[0,:,:])
-            #print(dynamic_weight)
             loss = SC_func.hv_function(dynamic_weight.reshape(1,2),rho =10)
-        elif criterion == 'ls':
+        elif criterion == 'LS':
             loss = SC_func.linear_function()
-        elif criterion == 'cheby':
+        elif criterion == 'Cheby':
             loss = SC_func.chebyshev_function()
-        elif criterion == 'utility':
+        elif criterion == 'Utility':
             loss = SC_func.utility_function(ub = 1.01)
         elif criterion == 'KL':
             loss = SC_func.KL_function()
-        elif criterion == 'cosine':
+        elif criterion == 'Cosine':
             loss = SC_func.cosine_function()
-        elif criterion == 'cauchy':
+        elif criterion == 'Cauchy':
             SC_func = SC_functions(losses,ray_cs)
             loss = SC_func.cauchy_schwarz_function()
         loss.backward()
@@ -117,12 +118,22 @@ def train_2d(device, hidden_dim, lr, wd, epochs, alpha_r, outdim, criterion,n_ta
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start
-    torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_2d_"+str(name)+".pt"))
+    #torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_2d_"+str(name)+".pt"))
     return sol,time_training
 
-def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_tasks,name):
-    hnet: nn.Module = Toy_Hypernetwork_3d(ray_hidden_dim = hidden_dim, out_dim = outdim, n_tasks = n_tasks)
-    logging.info(f"HN size: {count_parameters(hnet)}")
+def train_3d(device, cfg, criterion):
+    ray_hidden_dim = cfg['TRAIN']['Ray_hidden_dim']
+    out_dim = cfg['TRAIN']['Out_dim']
+    n_tasks = cfg['TRAIN']['N_task']
+    num_hidden_layer = cfg['TRAIN']['Solver'][criterion]['Num_hidden_layer']
+    last_activation = cfg['TRAIN']['Solver'][criterion]['Last_activation']
+    ref_point = tuple(map(int, cfg['TRAIN']['Ref_point'].split(',')))
+    lr = cfg['TRAIN']['OPTIMIZER']['Lr']
+    wd = cfg['TRAIN']['OPTIMIZER']['WEIGHT_DECAY']
+    type_opt = cfg['TRAIN']['OPTIMIZER']['TYPE']
+    epochs = cfg['TRAIN']['Epoch']
+    alpha_r = cfg['TRAIN']['Alpha']
+    hnet = Hypernetwork_3d(ray_hidden_dim = ray_hidden_dim, out_dim = out_dim, n_tasks = n_tasks,num_hidden_layer=num_hidden_layer,last_activation=last_activation)
     hnet = hnet.to(device)
     loss1 = f_1
     loss2 = f_2
@@ -130,8 +141,8 @@ def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_ta
     sol = []
     optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
     start = time.time()
-    n_mo_sol, n_mo_obj, ref_point = 1,3,(2,2,2)
-    mo_opt = HvMaximization(n_mo_sol, n_mo_obj, ref_point)
+    # n_mo_sol, n_mo_obj, ref_point = 1,3,(2,2,2)
+    mo_opt = HvMaximization(1, n_tasks, ref_point)
     for epoch in tqdm(range(epochs)):
         ray = torch.from_numpy(
             np.random.dirichlet((alpha_r, alpha_r,alpha_r), 1).astype(np.float32).flatten()
@@ -152,32 +163,28 @@ def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_ta
             loss_numpy.append(losses.detach().cpu().numpy())
         loss_numpy = np.array(loss_numpy).T
         loss_numpy = loss_numpy[np.newaxis, :, :]
-
-        #print(loss_numpy)
-        if criterion == 'prod':
+        if criterion == 'Prod':
             loss = SC_func.product_function()
-        elif criterion == 'log':
+        elif criterion == 'Log':
             loss = SC_func.log_function()
-        elif criterion == 'ac':
+        elif criterion == 'AC':
             loss = SC_func.ac_function(rho = 0.1)
-        elif criterion == 'mc':
+        elif criterion == 'MC':
             loss = SC_func.mc_function(rho = 0.1)
-        elif criterion == 'hv':
-            #losses = np.array(loss_numpy)
+        elif criterion == 'HV':
             dynamic_weight = mo_opt.compute_weights(loss_numpy[0,:,:])
-            #print(dynamic_weight)
             loss = SC_func.hv_function(dynamic_weight.reshape(1,3),rho = 600)
-        elif criterion == 'ls':
+        elif criterion == 'LS':
             loss = SC_func.linear_function()
-        elif criterion == 'cheby':
+        elif criterion == 'Cheby':
             loss = SC_func.chebyshev_function()
-        elif criterion == 'utility':
+        elif criterion == 'Utility':
             loss = SC_func.utility_function(ub = 1.01)
         elif criterion == 'KL':
             loss = SC_func.KL_function()
-        elif criterion == 'cosine':
+        elif criterion == 'Cosine':
             loss = SC_func.cosine_function()
-        elif criterion == 'cauchy':
+        elif criterion == 'Cauchy':
             SC_func = SC_functions(losses,ray_cs)
             loss = SC_func.cauchy_schwarz_function()
         loss.backward()
@@ -186,10 +193,10 @@ def train_3d(device, hidden_dim, lr, wd, epochs,alpha_r, outdim, criterion, n_ta
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start
-    torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_3d_"+str(name)+".pt"))
+    #torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_3d_"+str(name)+".pt"))
     return sol,time_training
 
-def draw_2d(sol,pf):
+def draw_2d(sol,pf,cfg,criterion):
     x = []
     y = []
     for s in sol:
@@ -201,11 +208,11 @@ def draw_2d(sol,pf):
     plt.scatter(x[3:],y[3:], c = 'red', s = 20,label="Generated Point")
     plt.title('Pareto front training')
     plt.legend()
-    plt.savefig("./train_results/"+str(name)+"_train_"+str(criterion)+".png")
+    plt.savefig("./train_results/"+str(cfg['NAME'])+"_train_"+str(criterion)+".png")
     #plt.savefig("/home/tuantran/Documents/OPT/Multi_Gradient_Descent/PHN/ex2_train_"+str(epochs)+"_ray.pdf")
     plt.show()
 
-def draw_3d(sol,pf):
+def draw_3d(sol,pf,cfg,criterion):
     x = []
     y = []
     z = []
@@ -263,7 +270,7 @@ def draw_3d(sol,pf):
     y = np.array(y)
     z = np.array(z)
     title = ax.set_title('')
-    plt.savefig("./train_results/"+str(name)+"_train_"+str(criterion)+".png")
+    plt.savefig("./train_results/"+str(cfg['NAME'])+"_train_"+str(criterion)+".png")
     def update_graph(i):
         graph._offsets3d = (x[:i+1],y[:i+1],z[:i+1])
         title.set_text('3D Test, iteration = {}'.format(i))
@@ -274,44 +281,43 @@ def draw_3d(sol,pf):
     #ani.save('./train_results/train.gif', writer='imagemagick', fps=30)
     plt.show()
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default= 20000, help="num. epochs")
-    parser.add_argument("--alpha", type=float, default=0.6, help="alpha for dirichlet")
-    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
-    parser.add_argument("--wd", type=float, default=0.0, help="weight decay")
-    parser.add_argument("--outdim", type=int, default=3, help="output dim")
-    parser.add_argument("--n_tasks", type=int, default=3, help="number of objective")
-    parser.add_argument(
-        "--solver", type=str, choices=["ls", "KL","cheby","utility","cosine","cauchy","prod","log","ac","mc","hv"], default="cheby", help="solver"
-    )
-    parser.add_argument("--hiddendim", type=int, default=100, help="hidden_dim")
-    parser.add_argument("--mode", type=str, default='3d', help="mode example")
-    parser.add_argument("--name", type=str, default='ex3', help="example name")
-    args = parser.parse_args()
-    
-    out_dim = args.outdim
-    criterion = args.solver 
-    hidden_dim = args.hiddendim
-    lr = args.lr
-    wd = args.wd
-    epochs = args.epochs 
-    alpha_r = args.alpha
-    n_tasks = args.n_tasks
-    name = args.name
-
-    if args.mode == "2d":
-        pf = create_pf6() 
-        sol, time_training = train_2d(device = device, hidden_dim = hidden_dim,
-        lr = lr, wd = wd, epochs = epochs, alpha_r = alpha_r, outdim = out_dim,
-        criterion = criterion,n_tasks = n_tasks,name = name)
+def main(cfg,criterion,device,cpf):
+    if cfg['MODE'] == '2d':
+        if cfg['NAME'] == 'ex1':
+            
+            pf = cpf.create_pf5() 
+        else:
+            pf = cpf.create_pf6() 
+        sol, time_training = train_2d(device,cfg,criterion)
         print("Time: ",time_training)  
-        draw_2d(sol,pf)
+        draw_2d(sol,pf,cfg,criterion)
     else:
-        pf  = create_pf_3d()
-        sol, time_training = train_3d(device = device, hidden_dim = hidden_dim,
-        lr = lr, wd = wd, epochs = epochs, alpha_r = alpha_r, outdim = out_dim,
-        criterion = criterion,n_tasks = n_tasks,name = name)
-        print("Time: ",time_training)
-        draw_3d(sol,pf)
+        pf  = cpf.create_pf_3d()
+        sol, time_training = train_3d(device,cfg,criterion)
+        print("Time: ",time_training)  
+        draw_3d(sol,pf,cfg,criterion)
+
+if __name__ == "__main__":
+    device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
+    parser.add_argument(
+        "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV"], default="HV", help="solver"
+    )
+    args = parser.parse_args()
+    criterion = args.solver 
+    config_file = args.config
+
+    with open(config_file) as stream:
+        cfg = yaml.safe_load(stream)
+    
+    if cfg['NAME'] == 'ex1':
+        from problems.pb1 import f_1, f_2
+        cpf = PF(f_1, f_2,None)
+    elif cfg['NAME'] == 'ex2':
+        from problems.pb2 import f_1, f_2
+        cpf = PF(f_1, f_2,None)
+    if cfg['NAME'] == 'ex3':
+        from problems.pb3 import f_1, f_2, f_3
+        cpf = PF(f_1, f_2, f_3)
+    main(cfg,criterion,device,cpf)
