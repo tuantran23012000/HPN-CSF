@@ -363,7 +363,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--num_ray", type=int, default=10, help="hidden_dim")
     parser.add_argument("--mode", type=str, default='2d', help="mode example")
-    parser.add_argument("--name", type=str, default='ex2', help="example name")
+    parser.add_argument("--name", type=str, default='ex1', help="example name")
     args = parser.parse_args()
     criterion = args.criterion
     num_ray = args.num_ray
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     name = args.name
     num = 30
     if mode == "2d":
-        pf = create_pf6()
+        pf = create_pf5()
         # check = []
         # for i in range(10):
         #     MED, targets_epo, results1, contexts = predict_2d(criterion,num_ray,mode,name,pf,num)

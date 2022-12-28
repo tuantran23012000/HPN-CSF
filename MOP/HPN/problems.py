@@ -10,20 +10,20 @@
 #          + 8*(output[0][1]) + 8*(output[0][2]))+43.7)/56
 
 # ------------------ Example 1 ---------------- 
-# def f_1(output):
-#     return output[0][0]
-# def f_2(output):
-#     return (output[0][0]-1)**2
-# def f_3(output):
-#     return 0
-
-# ------------------ Example 2 ---------------- 
 def f_1(output):
-    return (1/50)*(output[0][0]**2 + output[0][1]**2)
+    return output[0][0]
 def f_2(output):
-    return (1/50)*((output[0][0]-5)**2 + (output[0][1]-5)**2)
+    return (output[0][0]-1)**2
 def f_3(output):
     return 0
+
+# ------------------ Example 2 ---------------- 
+# def f_1(output):
+#     return (1/50)*(output[0][0]**2 + output[0][1]**2)
+# def f_2(output):
+#     return (1/50)*((output[0][0]-5)**2 + (output[0][1]-5)**2)
+# def f_3(output):
+#     return 0
 
 
 
