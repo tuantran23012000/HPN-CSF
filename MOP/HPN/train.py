@@ -3,7 +3,7 @@ import os
 sys.path.append(os.getcwd())
 import time
 from tqdm import tqdm
-from models import Hypernetwork_2d, Hypernetwork_3d
+from models import Hypernetwork
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -37,16 +37,15 @@ def train_2d(device, cfg,criterion):
     type_opt = cfg['TRAIN']['OPTIMIZER']['TYPE']
     epochs = cfg['TRAIN']['Epoch']
     alpha_r = cfg['TRAIN']['Alpha']
-    hnet = Hypernetwork_2d(ray_hidden_dim = ray_hidden_dim, out_dim = out_dim, n_tasks = n_tasks,num_hidden_layer=num_hidden_layer,last_activation=last_activation)
+    hnet = Hypernetwork(ray_hidden_dim = ray_hidden_dim, out_dim = out_dim, n_tasks = n_tasks,num_hidden_layer=num_hidden_layer,last_activation=last_activation)
     hnet = hnet.to(device)
     loss1 = f_1
     loss2 = f_2
     sol = []
     if type_opt == 'adam':
         optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
-    start = time.time()
-    #n_mo_sol, n_mo_obj, ref_point = 1,n_tasks,ref_point
     mo_opt = HvMaximization(1, n_tasks, ref_point)
+    start = time.time()
     for epoch in tqdm(range(epochs)):
         ray = torch.from_numpy(
             np.random.dirichlet((alpha_r, alpha_r), 1).astype(np.float32).flatten()
@@ -115,16 +114,16 @@ def train_3d(device, cfg, criterion):
     type_opt = cfg['TRAIN']['OPTIMIZER']['TYPE']
     epochs = cfg['TRAIN']['Epoch']
     alpha_r = cfg['TRAIN']['Alpha']
-    hnet = Hypernetwork_3d(ray_hidden_dim = ray_hidden_dim, out_dim = out_dim, n_tasks = n_tasks,num_hidden_layer=num_hidden_layer,last_activation=last_activation)
+    hnet = Hypernetwork(ray_hidden_dim = ray_hidden_dim, out_dim = out_dim, n_tasks = n_tasks,num_hidden_layer=num_hidden_layer,last_activation=last_activation)
     hnet = hnet.to(device)
     loss1 = f_1
     loss2 = f_2
     loss3 = f_3
     sol = []
-    optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd)
-    start = time.time()
-    # n_mo_sol, n_mo_obj, ref_point = 1,3,(2,2,2)
+    if type_opt == 'adam':
+        optimizer = torch.optim.Adam(hnet.parameters(), lr = lr, weight_decay=wd) 
     mo_opt = HvMaximization(1, n_tasks, ref_point)
+    start = time.time()
     for epoch in tqdm(range(epochs)):
         ray = torch.from_numpy(
             np.random.dirichlet((alpha_r, alpha_r,alpha_r), 1).astype(np.float32).flatten()
@@ -175,7 +174,6 @@ def train_3d(device, cfg, criterion):
             loss = CS_func.cauchy_schwarz_function()
         loss.backward()
         optimizer.step()
-        
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start

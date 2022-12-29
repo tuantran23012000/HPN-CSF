@@ -74,11 +74,9 @@ def find_target(pf, criterion, context,cfg):
         F = np.max(context*pf + rho*F1,axis = 1)
 
     elif criterion == 'HV':
-        # n_mo_sol, n_mo_obj, ref_point = 1,2,(2,2)
         n_mo_obj = cfg['TRAIN']['N_task']
         ref_point = tuple(map(int, cfg['TRAIN']['Ref_point'].split(',')))
-        rho = cfg['TRAIN']['Solver'][criterion]['Rho']
-        
+        rho = cfg['TRAIN']['Solver'][criterion]['Rho'] 
         mo_opt = HvMaximization(1, n_mo_obj, ref_point)
         loss_numpy = pf[:, :,np.newaxis]
         n_samples = loss_numpy.shape[0]
