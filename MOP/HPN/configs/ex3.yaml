@@ -3,7 +3,7 @@ NAME: 'ex3'
 MODE: '3d'
 
 TRAIN:
-  Epoch: 2000
+  Epoch: 10000
   Alpha: 0.6
   OPTIMIZER:
     TYPE: 'adam'
@@ -15,35 +15,35 @@ TRAIN:
   Ref_point: "2,2,2"
   Solver:
     Cheby:
-      Num_hidden_layer: 2
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     LS:
-      Num_hidden_layer: 4
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     Utility:
-      Num_hidden_layer: 6
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     KL:
-      Num_hidden_layer: 5
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     Cosine:
-      Num_hidden_layer: 5
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     Cauchy:
-      Num_hidden_layer: 6
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     Log:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     Prod:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
     AC:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
       Rho: 0.1
     MC:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 3
       Last_activation: 'softmax'
       Rho: 0.1
     HV:

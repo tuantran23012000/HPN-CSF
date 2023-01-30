@@ -11,10 +11,12 @@ import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import argparse
-from tools.utils import find_target
+from tools.utils import find_target, circle_points_random, get_d_paretomtl
 import matplotlib as mpl
 from create_pareto_front import PF
 import yaml
+from scalarization_function import CS_functions
+from torch.autograd import Variable
 from tools.utils import circle_points, sample_vec
 mpl.rcParams['xtick.labelsize'] = 15
 mpl.rcParams['ytick.labelsize'] = 15
@@ -36,8 +38,8 @@ font_legend = {'family': 'Times New Roman',
 def predict_2d(device,cfg,criterion,pf):
     mode = cfg['MODE']
     name = cfg['NAME']
-    num_ray_init = cfg['TEST']['Num_ray_init']
-    num_ray_test = cfg['TEST']['Num_ray_test']
+    num_ray_init = cfg['EVAL']['Num_ray_init']
+    num_ray_test = cfg['EVAL']['Num_ray_test']
     hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt",map_location=device)
     hnet1.eval()
     loss1 = f_1
@@ -58,17 +60,48 @@ def predict_2d(device,cfg,criterion,pf):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
+    print(np.shape(contexts))
     contexts = rng.choice(contexts,num_ray_test)
-    #contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
+    
+    contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
+    #contexts = circle_points_random([1], [25])[0]
+    #print(contexts)
     for k,r in enumerate(contexts):
         r_inv = 1. / r
         ray = torch.Tensor(r.tolist()).to(device)
+        ray = ray/ray.sum()
+        #print(ray)
         output1 = hnet1(ray)
         l1_ = loss1(output1)
         l2_ = loss2(output1)
+        losses = torch.stack([l1_, l2_])
         results1.append([l1_, l2_])
-        if criterion == "cauchy":
+        if criterion == "Cauchy":
             target_epo = find_target(pf, criterion = criterion, context = r_inv.tolist(),cfg=cfg)
+        elif criterion == "CPMTL":
+            hnet1.zero_grad()
+            
+            l1_.backward(retain_graph = True)
+            grad_ = {}
+            grad_[1] = []
+            
+            for param in hnet1.parameters():
+                if param.grad is not None:
+                    grad_[1].append(Variable(param.grad.data.clone().flatten(), requires_grad = False))
+            hnet1.zero_grad()
+            l1_.backward(retain_graph = True)
+            grad_[2] = []
+            for param in hnet1.parameters():
+                if param.grad is not None:
+                    grad_[2].append(Variable(param.grad.data.clone().flatten(), requires_grad = False))
+            grads_list = [torch.cat(grad_[1]),torch.cat(grad_[2])]
+            grads = torch.stack(grads_list)
+            ref_vec = torch.tensor(contexts).float()
+            
+            #pref_idx = np.random.randint(25)
+            # loss = CS_func.get_d_paretomtl(grads,losses,ref_vec,ref_vec[pref_idx])
+            target_epo = get_d_paretomtl(pf,grads,losses,ref_vec,ray)
+            #print(target_epo)
         else:
             target_epo = find_target(pf, criterion = criterion, context = r.tolist(),cfg = cfg)
         targets_epo.append(target_epo)
@@ -138,7 +171,8 @@ def draw_2d(cfg,targets_epo, results1, contexts,pf,criterion):
     for k,r in enumerate(contexts):
         r  = r/ r.sum()
         r_inv = 1. / r
-        if criterion == "KL" or criterion == "cheby":
+        #r_inv = r
+        if criterion == "KL" or criterion == "cheby" or criterion == "HVI" or criterion == "EPO":
             ep_ray = 0.9 * r_inv / np.linalg.norm(r_inv)
             ep_ray_line = np.stack([np.zeros(2), ep_ray])
             label = r'$r^{-1}$ ray' if k == 0 else ''
@@ -198,7 +232,6 @@ def draw_3d(cfg,targets_epo, results1, contexts,pf,criterion):
     ax.plot_trisurf(pf[:, 0], pf[:, 1], pf[:, 2],color='grey',alpha=0.5, shade=True,antialiased = True)
     ax.scatter(x, y, z, zdir='z',marker='o', s=10, c='black', depthshade=False,label = 'Predict')
     ax.scatter(x_target, y_target, z_target, zdir='z',marker='D', s=20, c='red', depthshade=False,label = 'Target')
-    #ax.legend()
     ax.set_xlabel(r'$f_1$',fontsize=18)
     ax.set_ylabel(r'$f_2$',fontsize=18)
     ax.set_zlabel(r'$f_3$',fontsize=18)
@@ -267,9 +300,9 @@ def main(cfg,criterion,device,cpf):
 if __name__ == "__main__":
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='./configs/ex3.yaml', help="config file")
+    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
     parser.add_argument(
-        "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV"], default="HV", help="solver"
+        "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV","CPMTL","EPO","HVI"], default="Utility", help="solver"
     )
     args = parser.parse_args()
     criterion = args.solver

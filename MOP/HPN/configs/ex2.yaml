@@ -3,7 +3,7 @@ NAME: 'ex2'
 MODE: '2d'
 
 TRAIN:
-  Epoch: 200
+  Epoch: 10000
   Alpha: 0.6
   OPTIMIZER:
     TYPE: 'adam'
@@ -18,19 +18,19 @@ TRAIN:
       Num_hidden_layer: 2
       Last_activation: 'relu'
     LS:
-      Num_hidden_layer: 4
+      Num_hidden_layer: 2
       Last_activation: 'relu'
     Utility:
       Num_hidden_layer: 2
       Last_activation: 'relu'
     KL:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 2
       Last_activation: 'relu'
     Cosine:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 2
       Last_activation: 'relu'
     Cauchy:
-      Num_hidden_layer: 1
+      Num_hidden_layer: 2
       Last_activation: 'relu'
     Log:
       Num_hidden_layer: 2
@@ -50,12 +50,25 @@ TRAIN:
       Num_hidden_layer: 2
       Last_activation: 'relu'
       Rho: 100
+    CPMTL:
+      Num_hidden_layer: 2
+      Last_activation: 'relu'
+    EPO:
+      Num_hidden_layer: 2
+      Last_activation: 'relu'
+    HVI:
+      Num_hidden_layer: 2
+      Last_activation: 'relu'
+      Head : 4
+      Rho: 100
 
 EVAL:
   Flag: True
-  Num_eval: 10      
+  Num_ray_init: 1000
+  Num_ray_test: 10
+  Num_eval: 10   
 
 TEST:
   Num_ray_init: 1000
-  Num_ray_test: 30
+  Num_ray_test: 10
   Num_eval: 10

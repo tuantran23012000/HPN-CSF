@@ -3,12 +3,27 @@ import random
 import torch
 import numpy as np
 from tools.hv import HvMaximization
+from min_norm_solvers_numpy import MinNormSolver
 def set_logger():
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
-
+def circle_points_random(r, n):
+    """
+    generate n random unit vectors
+    """
+    
+    circles = []
+    for r, n in zip(r, n):
+        t = np.random.rand(n) * 0.5 * np.pi  
+        t = np.sort(t)
+        
+        x = r * np.cos(t)
+        y = r * np.sin(t)
+        circles.append(np.c_[x, y])
+    #print(circles)
+    return circles
 
 def set_seed(seed):
     """for reproducibility
@@ -89,7 +104,23 @@ def find_target(pf, criterion, context,cfg):
         r_s = np.sqrt(np.sum(np.array(context)**2))
         cosine = - (rl) / (l_s*r_s)
         F = -np.sum((dynamic_weight*pf),axis =1) + rho*cosine
-
+    elif criterion == 'HVI':
+        n_mo_obj = cfg['TRAIN']['N_task']
+        ref_point = tuple(map(int, cfg['TRAIN']['Ref_point'].split(',')))
+        rho = cfg['TRAIN']['Solver'][criterion]['Rho'] 
+        mo_opt = HvMaximization(1, n_mo_obj, ref_point)
+        loss_numpy = pf[:, :,np.newaxis]
+        n_samples = loss_numpy.shape[0]
+        dynamic_weight = []
+        for i_sample in range(0, n_samples):
+            dynamic_weight.append((mo_opt.compute_weights(loss_numpy[i_sample,:,:])).reshape(1,n_mo_obj).tolist()[0])
+        dynamic_weight = np.array(dynamic_weight)
+        rl = np.sum(context*pf,axis = 1)
+        l_s = np.sqrt(np.sum(pf**2,axis = 1))
+        r_s = np.sqrt(np.sum(np.array(context)**2))
+        cosine = - (rl) / (l_s*r_s)
+        # F = -np.sum((dynamic_weight*pf),axis =1) + rho*cosine
+        F = -np.sum((dynamic_weight*pf),axis =1) + rho*cosine
     elif criterion == 'Cheby':
         F = np.max(context*pf,axis = 1)
 
@@ -111,11 +142,61 @@ def find_target(pf, criterion, context,cfg):
         rl = np.exp(context*pf)
         normalized_rl = rl/np.sum(rl,axis=1).reshape(pf.shape[0],1)
         F = np.sum(normalized_rl * np.log(normalized_rl * m),axis=1) 
+    elif criterion == 'EPO':
+        m = pf.shape[1]
+        rl = context*pf
+        normalized_rl = rl/np.sum(rl,axis=1).reshape(pf.shape[0],1)
+        F = np.sum(normalized_rl * np.log(normalized_rl * m + 0.001),axis=1) 
 
     elif criterion == 'Cauchy':
         rl = np.sum(context*pf,axis = 1)
         l_s = np.sum(pf**2,axis = 1)
         r_s = np.sum(np.array(context)**2)
         F = 1 - (rl)**2 / (l_s*r_s)
+    # elif criterion == 'CPMTL':
+    #     rl = np.sum(context*pf,axis = 1)
+    #     l_s = np.sum(pf**2,axis = 1)
+    #     r_s = np.sum(np.array(context)**2)
+    #     F = 1 - (rl)**2 / (l_s*r_s)
 
+    return pf[F.argmin(), :]
+def get_d_paretomtl(pf,grads,value,normalized_rest_weights,normalized_current_weight):
+    w = normalized_rest_weights - normalized_current_weight
+        
+    #w = normalized_rest_weights
+    # solve QP 
+    F = []
+    for value in pf:
+        value = torch.tensor(value).float()
+        gx =  torch.matmul(w,value/torch.norm(value))
+        idx = gx >  0
+        #print(torch.sum(idx))
+        if torch.sum(idx) <= 0:
+            sol, nd = MinNormSolver.find_min_norm_element([[grads[t]] for t in range(len(grads))])
+            #print(sol)
+            weight = torch.tensor(sol).float()
+            f = (weight*value).sum()
+            F.append(f)
+            continue
+        vec =  torch.cat((grads, torch.matmul(w[idx],grads)))
+        # use MinNormSolver to solve QP
+        sol, nd = MinNormSolver.find_min_norm_element([[vec[t]] for t in range(len(vec))])
+        
+        # reformulate ParetoMTL as linear scalarization method, return the weights
+        weight0 =  sol[0] + torch.sum(torch.stack([sol[j] * w[idx][j - 2,0] for j in torch.arange(2,2 + torch.sum(idx))]))
+        weight1 = sol[1] + torch.sum(torch.stack([sol[j] * w[idx][j - 2,1] for j in torch.arange(2,2 + torch.sum(idx))]))
+        weight = torch.stack([weight0,weight1])
+        # weight += weight*(2/torch.sum(weight))
+        #print(weight)
+        # print(value)
+        # print(weight.shape)
+        # print(pf.shape)
+        # print((weight*pf).shape)
+        f = (weight*value).sum()
+        #print(f)
+        F.append(f)
+        # print(pf[F.argmin(), :])
+        #print(pf[F.argmin(), :])
+    F = np.array(F)
+    #print(pf[F.argmin(), :])
     return pf[F.argmin(), :]
