@@ -1,6 +1,6 @@
 
 # A Framework for Pareto Multi Task Learning with Completed Scalarization Functions
-![](./MOP/HPN/train_results/train.gif)
+![](train.gif)
 ## Requirements
 - Pytorch
 - Python
