@@ -7,7 +7,7 @@ from autograd import grad
 def g3(x):
     return x[0]**2 + x[1]**2 + x[2]**2 - 1
 g3_dx = grad(g3)
-bounds = Bounds([0 for i in range(3)], [1 for i in range(3)])
+bounds = Bounds([0 for i in range(1)], [1 for i in range(1)])
 cons = ({'type': 'eq',
           'fun' : lambda x: np.array([g3(x)]),
           'jac' : lambda x: np.array([g3_dx(x)])})
@@ -16,7 +16,7 @@ def rosen(x,y):
     return np.sqrt(np.sum((x-y)**2))
 def find_min(y,n):
     x = np.random.rand(1,n).tolist()[0]
-    res = minimize(rosen, x, args=(y), jac="2-point",hess = BFGS(),constraints = cons,
+    res = minimize(rosen, x, args=(y), jac="2-point",hess = BFGS(),
                 method='trust-constr', options={'disp': False},bounds=bounds)
     return res.x
 
@@ -58,7 +58,7 @@ def epo_search(multi_obj_fg, r, x=None, relax=False, eps=1e-4, max_iters=100,
             break
         x = x - 10. * max(lp.mu_rl, 0.1) * step_size * d_nd
         #print(x)
-        x = find_min(x[0],3)
+        x = find_min(x[0],1)
         
         #print(type(x))
         if store_xs:

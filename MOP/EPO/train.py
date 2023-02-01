@@ -1,25 +1,20 @@
 import sys
 import os
 sys.path.append(os.getcwd())
-from torch import nn
-import logging
 import time
-import random
-from tqdm import tqdm
 import numpy as np
-import torch
 from matplotlib import pyplot as plt
-from problems import f_1, f_2, f_3
 from create_pareto_front import create_pf5,create_pf6, create_pf_3d, concave_fun_eval, concave_fun_eval_3d
 import argparse
 import matplotlib as mpl
-from matplotlib.animation import FuncAnimation
 from epo_search import epo_search
 import torch
-from matplotlib import cm
 import itertools
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from matplotlib.tri import Triangulation, LinearTriInterpolator
+from matplotlib.tri import Triangulation
+import matplotlib as mpl
+mpl.rcParams['xtick.labelsize'] = 15
+mpl.rcParams['ytick.labelsize'] = 15
 def simplex(n_vals):
     base = np.linspace(0, 0.25, n_vals, endpoint=False)
     coords = np.asarray(list(itertools.product(base, repeat=3)))
@@ -58,7 +53,7 @@ def sample_vec(n,m):
     
     return rays
 
-def train_2d(n=2,max_iters = 100,step_size=0.1,pf=None,num=10):
+def train_2d(n=2,max_iters = 100,step_size=0.1,pf=None,num=10,name=None):
 
     start = time.time()
     target = []
@@ -77,9 +72,7 @@ def train_2d(n=2,max_iters = 100,step_size=0.1,pf=None,num=10):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
-#A_sampled = rng.choice(A, 2)
     #rs = rng.choice(contexts,30)
-    print(rs.shape)
     fig, ax = plt.subplots() 
     for k, r in enumerate(rs):
         r_inv = 1. / r
@@ -105,20 +98,21 @@ def train_2d(n=2,max_iters = 100,step_size=0.1,pf=None,num=10):
     MED = np.mean(np.sqrt(np.sum(np.square(target-predict),axis = 1)))
     print("MED:",MED)
     color_list = ['#28B463', '#326CAE', '#FFC300','#FF5733', 'brown']
-    ax.scatter(target[:,0], target[:,1], s=60,c=color_list[0], marker='o', alpha=1,label='Target')
-    ax.scatter(predict[:, 0], predict[:, 1],s=40,c=color_list[2],marker='D',label='Predict') #HPN-PNGD
+    ax.scatter(target[:,0], target[:,1],  s=40,c='red', marker='D', alpha=1,label='Target')
+    ax.scatter(predict[:, 0], predict[:, 1],s=40,c='black',marker='o',label='Predict') #HPN-PNGD
     ax.scatter(pf[:,0],pf[:,1],s=10,c='gray',label='Pareto Front',zorder=0)
     ax.spines['right'].set_color('none')
     ax.spines['top'].set_color('none')
     ax.grid(color="k", linestyle="-.", alpha=0.3, zorder=0)
-    ax.set_xlabel(r'$f_1$')
-    ax.set_ylabel(r'$f_2$')
-    ax.legend()
-    plt.savefig('ex1_EPO_2d.jpg')
+    ax.set_xlabel(r'$f_1$',fontsize=25)
+    ax.set_ylabel(r'$f_2$',fontsize=25)
+    ax.legend(fontsize=12)
+    plt.tight_layout()
+    plt.savefig(str(name)+'_EPO_2d.pdf')
     plt.show()
     return MED
 
-def train_3d(n=3,max_iters = 100,step_size=0.1):
+def train_3d(n=3,max_iters = 100,step_size=0.1,pf=None,num=10,name=None):
     sim = simplex(5)
     x = sim[:, 0]
     y = sim[:, 1]
@@ -139,6 +133,20 @@ def train_3d(n=3,max_iters = 100,step_size=0.1):
     start = time.time()
     target = []
     predict = []
+    contexts = np.array(sample_vec(3,num))
+    tmp = []
+    for r in contexts:
+        flag = True
+        for i in r:
+            if i <=0.16:
+                flag = False
+                break
+        if flag:
+
+            tmp.append(r)
+    contexts = np.array(tmp)
+    rng = np.random.default_rng()
+    #rs = rng.choice(contexts,30)
     rs = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
 
     for k, r in enumerate(rs):
@@ -147,7 +155,7 @@ def train_3d(n=3,max_iters = 100,step_size=0.1):
         ep_ray_line = np.stack([np.zeros(3), ep_ray])
         label = r'$r^{-1}$ ray' if k == 0 else ''
         ax.plot(ep_ray_line[:, 0], ep_ray_line[:, 1],ep_ray_line[:, 2], color='k',
-                lw=1, ls='--')
+                lw=1, ls='--',label=label)
         x0 = np.zeros(n)
         x0[range(0, n, 2)] = 0.1
         x0[range(1, n, 2)] = 0.2
@@ -170,17 +178,12 @@ def train_3d(n=3,max_iters = 100,step_size=0.1):
     z_target = target[:,2]
 
     ax.plot_trisurf(pf[:, 0], pf[:, 1], pf[:, 2],color='grey',alpha=0.5, shade=True,antialiased = True)
-    # ax.plot_surface(pf[:, 0], pf[:, 1], pf[:, 2], rstride=1, cstride=1, color='r', shade=True,
-    #                linewidth=0, antialiased=False)
     ax.scatter(x, y, z, zdir='z',marker='o', s=10, c='black', depthshade=False,label = 'Predict')
     ax.scatter(x_target, y_target, z_target, zdir='z',marker='D', s=20, c='red', depthshade=False,label = 'Target')
-    fake2Dline = mpl.lines.Line2D([0], [0], linestyle="none", c='k',
-                                  marker='s', alpha=0.5,label = 'Pareto front')
-    #ax.legend([fake2Dline],['Pareto front'], numpoints=1)
-    ax.legend()
-    ax.set_xlabel(r'$f_1$')
-    ax.set_ylabel(r'$f_2$')
-    ax.set_zlabel(r'$f_3$')
+
+    ax.set_xlabel(r'$f_1$',fontsize=18)
+    ax.set_ylabel(r'$f_2$',fontsize=18)
+    ax.set_zlabel(r'$f_3$',fontsize=18)
     ax.grid(True)
 
     ax.set_xticks([0.2, 0.4, 0.6, 0.8])
@@ -207,11 +210,11 @@ def train_3d(n=3,max_iters = 100,step_size=0.1):
     ax.yaxis._axinfo['tick']['outward_factor'] = 0.4
     ax.zaxis._axinfo['tick']['inward_factor'] = 0
     ax.zaxis._axinfo['tick']['outward_factor'] = 0.4
-    ax.view_init(elev=15., azim=100.)
+    ax.view_init(5, -90)
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_zlim(0, 1)
-    plt.savefig('/home/tuantran/EPOSearch/MOP/EPO/3d_ex3.jpg')
+    plt.savefig(str(name)+'_EPO_3d.pdf')
     plt.show()
 
 if __name__ == "__main__":
@@ -249,7 +252,7 @@ if __name__ == "__main__":
         #     check.append(MED)
         # print("Mean: ",np.array(check).mean())
         # print("Std: ",np.array(check).std())
-        MED = train_2d(n=1,max_iters = 500,step_size=0.1,pf=pf,num = 500)
+        MED = train_2d(n=1,max_iters = 500,step_size=0.1,pf=pf,num = 500,name=name)
     else:
         pf  = create_pf_3d()
-        train_3d(n=3,max_iters = 200,step_size=0.1)
+        train_3d(n=3,max_iters = 200,step_size=0.1,pf=pf,num = 500,name=name)

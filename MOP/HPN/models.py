@@ -1,379 +1,60 @@
-import torch
-from torch import nn, sigmoid
+from torch import nn
 import torch.nn.functional as F
-device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
-class Toy_Hypernetwork_2d(nn.Module):
-  def __init__(self, ray_hidden_dim=100, out_dim=10, n_hidden=1, n_tasks=2):
-      super().__init__()
-      self.n_hidden = n_hidden
-      self.n_tasks = n_tasks
-      '''
-            chebyshev example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            linear example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            utility example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            linear example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            chebyshev example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            utility example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            KL example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            Cosine example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            Cauchy example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            KL example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            cosine example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            cauchy example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            log example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            log example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      '''
-            ac example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            mc example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            hv example 7.1
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Sigmoid()
-      '''
-      '''
-            ac example 7.2
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-      '''
-      self.ray_mlp = nn.Sequential(
-            nn.Linear(2, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.ReLU(inplace=True),
-        )
-  def shared_parameters(self):
-        return [p for n, p in self.named_parameters() if not n.startswith('fc3')]
-  def forward(self, ray):
-      features = self.ray_mlp(ray)
-      return features.unsqueeze(0)
-class Toy_Hypernetwork_3d(nn.Module):
-  def __init__(self, ray_hidden_dim=100, out_dim=10, n_hidden=1, n_tasks=2):
-      super().__init__()
-      self.n_hidden = n_hidden
-      self.n_tasks = n_tasks
-      '''
-            convex problem monotonic utility -3D
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
 
-            nn.Linear(ray_hidden_dim, out_dim),
-            #nn.ReLU(inplace=True),
-            #nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            #LearnedSiLU(ray_hidden_dim)
-            nn.Softmax(dim=0)
-      '''
-      '''
-            convex problem monotonic linear -3D
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            #nn.ReLU(inplace=True),
-            # nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            # nn.ReLU(inplace=True),
-            # nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            # nn.ReLU(inplace=True),
+class Hypernetwork(nn.Module):
+      "2D example Hypernetwork"
 
-            nn.Linear(ray_hidden_dim, out_dim),
-            #nn.ReLU(inplace=True),
-            #nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            #LearnedSiLU(ray_hidden_dim)
-            nn.Softmax(dim=0)
-      '''
-      '''
-            cheby - 3D
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''
-            KL problem - 3D
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''
-            Cosine problem - 3D 
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''   
-            Cauchy-Schwarz problem - 3D
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
+      def __init__(self, ray_hidden_dim=100, out_dim = 2,n_tasks=2,num_hidden_layer=3,last_activation='relu'):
+            super().__init__()
+            self.out_dim = out_dim
+            self.n_tasks = n_tasks
+            self.ray_hidden_dim = ray_hidden_dim
+            self.num_hidden_layer = num_hidden_layer
+            self.last_activation = last_activation
+            self.input_layer =  nn.Sequential(nn.Linear(self.n_tasks, self.ray_hidden_dim),nn.ReLU(inplace=True))
+            self.hidden_layer = nn.ModuleList([nn.Linear(self.ray_hidden_dim, self.ray_hidden_dim) for i in range(self.num_hidden_layer)])
+            self.output_layer =  nn.Linear(self.ray_hidden_dim, self.out_dim)
 
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''
-            log example 7.3
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''
-            ac example 7.3
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''
-            mc example 7.3
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      '''
-            hv example 7.3
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, out_dim),
-            nn.Softmax(dim=0)
-      '''
-      self.ray_mlp = nn.Sequential(
-            nn.Linear(3, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            nn.ReLU(inplace=True),
+      def forward(self, ray):
+            x = self.input_layer(ray)
+            for i in range(self.num_hidden_layer):
+                  x = self.hidden_layer[i](x)
+                  x = F.relu(x)
+            x = self.output_layer(x)
+            if self.last_activation == 'relu':
+                  x = F.relu(x)
+            elif self.last_activation == 'sigmoid':
+                  x = F.sigmoid(x)
+            elif self.last_activation == 'softmax':
+                  x = F.softmax(x)
+            x = x.unsqueeze(0)
+            return x
 
-            nn.Linear(ray_hidden_dim, out_dim),
-            #nn.ReLU(inplace=True),
-            #nn.Linear(ray_hidden_dim, ray_hidden_dim),
-            #LearnedSiLU(ray_hidden_dim)
-            nn.Softmax(dim=0)
-        )
-  def forward(self, ray):
-      features = self.ray_mlp(ray)
-      return features.unsqueeze(0)
+# class Hypernetwork_3d(nn.Module):
+#       "3D example Hypernetwork"
+
+#       def __init__(self, ray_hidden_dim=100, out_dim=3, n_tasks=3,num_hidden_layer=3,last_activation = 'softmax'):
+#             super().__init__()
+#             self.out_dim = out_dim
+#             self.n_tasks = n_tasks
+#             self.ray_hidden_dim = ray_hidden_dim
+#             self.num_hidden_layer = num_hidden_layer
+#             self.last_activation = last_activation
+#             self.input_layer =  nn.Sequential(nn.Linear(self.n_tasks, self.ray_hidden_dim),nn.ReLU(inplace=True))
+#             self.hidden_layer = nn.ModuleList([nn.Linear(self.ray_hidden_dim, self.ray_hidden_dim) for i in range(self.num_hidden_layer)])
+#             self.output_layer =  nn.Linear(self.ray_hidden_dim, self.out_dim)
+
+#       def forward(self, ray):
+#             x = self.input_layer(ray)
+#             for i in range(self.num_hidden_layer):
+#                   x = self.hidden_layer[i](x)
+#                   x = F.relu(x)
+#             x = self.output_layer(x)
+#             if self.last_activation == 'relu':
+#                   x = F.relu(x)
+#             elif self.last_activation == 'sigmoid':
+#                   x = F.sigmoid(x)
+#             elif self.last_activation == 'softmax':
+#                   x = F.softmax(x)
+#             x = x.unsqueeze(0)
+#             return x
