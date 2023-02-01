@@ -393,12 +393,15 @@ def train_3d(device, cfg, criterion):
         elif criterion == 'Cauchy':
             CS_func = CS_functions(losses,ray_cs)
             loss = CS_func.cauchy_schwarz_function()
+        elif criterion == 'EPO':
+            solver = EPOSolver(n_tasks=3, n_params=count_parameters(hnet))
+            loss = solver(losses, ray, list(hnet.parameters()))
         loss.backward()
         optimizer.step()
         sol.append(output.cpu().detach().numpy().tolist()[0])
     end = time.time()
     time_training = end-start
-    #torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt"))
+    torch.save(hnet,("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt"))
     return sol,time_training
 
 def draw_2d(sol,pf,cfg,criterion):
@@ -505,7 +508,7 @@ def main(cfg,criterion,device,cpf):
 if __name__ == "__main__":
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
+    parser.add_argument("--config", type=str, default='./configs/ex3.yaml', help="config file")
     parser.add_argument(
         "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV","CPMTL","EPO","HVI"], default="Utility", help="solver"
     )

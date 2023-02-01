@@ -63,7 +63,7 @@ def predict_2d(device,cfg,criterion,pf):
     print(np.shape(contexts))
     contexts = rng.choice(contexts,num_ray_test)
     
-    contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
+    #contexts = np.array([[0.2, 0.8], [0.4, 0.6],[0.3,0.7],[0.5,0.5],[0.7,0.3],[0.6,0.4],[0.9,0.1]])
     #contexts = circle_points_random([1], [25])[0]
     #print(contexts)
     for k,r in enumerate(contexts):
@@ -117,8 +117,8 @@ def predict_2d(device,cfg,criterion,pf):
 def predict_3d(device,cfg,criterion,pf):
     mode = cfg['MODE']
     name = cfg['NAME']
-    num_ray_init = cfg['TEST']['Num_ray_init']
-    num_ray_test = cfg['TEST']['Num_ray_test']
+    num_ray_init = cfg['EVAL']['Num_ray_init']
+    num_ray_test = cfg['EVAL']['Num_ray_test']
     hnet1 = torch.load("./save_weights/best_weight_"+str(criterion)+"_"+str(mode)+"_"+str(name)+".pt",map_location=device)
     hnet1.eval()
     loss1 = f_1
@@ -139,6 +139,7 @@ def predict_3d(device,cfg,criterion,pf):
             tmp.append(r)
     contexts = np.array(tmp)
     rng = np.random.default_rng()
+    print(np.shape(contexts))
     contexts = rng.choice(contexts,num_ray_test)
     #contexts = np.array([[0.2, 0.5,0.3], [0.4, 0.25,0.35],[0.3,0.2,0.5],[0.55,0.2,0.25]])
     for r in contexts:
@@ -211,12 +212,12 @@ def draw_3d(cfg,targets_epo, results1, contexts,pf,criterion):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
     collection = Poly3DCollection(triangle_vertices,facecolors='grey', edgecolors=None)
-    if criterion == "KL" or criterion == "cheby":
+    if criterion == "KL" or criterion == "Cheby"or criterion == "EPO":
         ax.add_collection(collection)
     k = 0
     for r in contexts:
         r_inv = 1. / r
-        if criterion == "KL" or criterion == "cheby":
+        if criterion == "KL" or criterion == "EPO" or criterion == "Cheby":
             ep_ray = 1.0 * r_inv / np.linalg.norm(r_inv)
             ep_ray_line = np.stack([np.zeros(3), ep_ray])
             label = r'$r^{-1}$ ray' if k == 0 else ''
@@ -289,6 +290,7 @@ def main(cfg,criterion,device,cpf):
         pf  = cpf.create_pf_3d()
 
         if cfg['EVAL']['Flag']:
+            check = []
             for i in range(cfg['EVAL']['Num_eval']):
                 MED, _, _, _ = predict_3d(device,cfg,criterion,pf)
                 check.append(MED.tolist())
@@ -300,7 +302,7 @@ def main(cfg,criterion,device,cpf):
 if __name__ == "__main__":
     device = torch.device(f"cuda:0" if torch.cuda.is_available() and not False else "cpu")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default='./configs/ex1.yaml', help="config file")
+    parser.add_argument("--config", type=str, default='./configs/ex3.yaml', help="config file")
     parser.add_argument(
         "--solver", type=str, choices=["LS", "KL","Cheby","Utility","Cosine","Cauchy","Prod","Log","AC","MC","HV","CPMTL","EPO","HVI"], default="Utility", help="solver"
     )

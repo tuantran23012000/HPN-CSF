@@ -23,6 +23,7 @@ TRAIN:
     Utility:
       Num_hidden_layer: 2
       Last_activation: 'relu'
+      Ub: 2.01
     KL:
       Num_hidden_layer: 2
       Last_activation: 'relu'
@@ -65,8 +66,8 @@ TRAIN:
 EVAL:
   Flag: True
   Num_ray_init: 1000
-  Num_ray_test: 10
-  Num_eval: 10   
+  Num_ray_test: 600
+  Num_eval: 30   
 
 TEST:
   Num_ray_init: 1000

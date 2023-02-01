@@ -146,7 +146,7 @@ def find_target(pf, criterion, context,cfg):
         m = pf.shape[1]
         rl = context*pf
         normalized_rl = rl/np.sum(rl,axis=1).reshape(pf.shape[0],1)
-        F = np.sum(normalized_rl * np.log(normalized_rl * m + 0.001),axis=1) 
+        F = np.sum(normalized_rl * np.log(normalized_rl * m + 0.01),axis=1) 
 
     elif criterion == 'Cauchy':
         rl = np.sum(context*pf,axis = 1)

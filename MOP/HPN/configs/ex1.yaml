@@ -23,7 +23,7 @@ TRAIN:
     Utility:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'
-      Ub: 1.01
+      Ub: 2.01
     KL:
       Num_hidden_layer: 1
       Last_activation: 'sigmoid'

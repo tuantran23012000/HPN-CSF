@@ -23,6 +23,7 @@ TRAIN:
     Utility:
       Num_hidden_layer: 3
       Last_activation: 'softmax'
+      Ub: 2.01
     KL:
       Num_hidden_layer: 3
       Last_activation: 'softmax'
@@ -50,11 +51,17 @@ TRAIN:
       Num_hidden_layer: 3
       Last_activation: 'softmax'
       Rho: 100
+    EPO:
+      Num_hidden_layer: 3
+      Last_activation: 'softmax'
 
 EVAL:
-  Flag: False
-  Num_eval: 10
+  Flag: True
+  Num_ray_init: 100
+  Num_ray_test: 600
+  Num_eval: 30   
+
 
 TEST:
-  Num_ray_init: 1000
+  Num_ray_init: 100
   Num_ray_test: 10
